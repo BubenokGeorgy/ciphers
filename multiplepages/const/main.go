@@ -100,8 +100,8 @@ var WindowConfStandard = WindowConf{
 }
 
 //Paths
-const PathText = "D:\\универ\\4 семестр\\криптография\\text.txt"
-const PathProverb = "D:\\универ\\4 семестр\\криптография\\proverb.txt"
+const PathText = "text.txt"
+const PathProverb = "proverb.txt"
 
 //Errors
 const ErrorTextInValidSym = "в тексте для шифрования содержатся недопустимые символы"

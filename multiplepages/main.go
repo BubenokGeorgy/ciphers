@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	walk.Resources.SetRootDirPath("../img")
+	walk.Resources.SetRootDirPath("img")
 
 	mw := new(AppMainWindow)
 	cfg := &MultiPageMainWindowConfig{

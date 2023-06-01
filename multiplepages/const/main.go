@@ -11,6 +11,8 @@ type EnDecrypt struct {
 type Key struct {
 	Label string
 	Visible bool
+	Enable bool
+	Const bool
 }
 
 type WindowConf struct {
@@ -31,6 +33,14 @@ type WindowConf struct {
 	HeaderSecondVisible bool
 	HeaderFirstText string
 	HeaderSecondText string
+	OutInEn bool
+	ThirdEditEnable bool
+	HeaderThirdVisible bool
+	HeaderThirdText string
+	ThirdEditVisible bool
+	EncryptButtonText string
+	DecryptButtonText string
+	InDeEnable bool
 }
 
 type NewComposite struct {
@@ -97,11 +107,50 @@ var WindowConfStandard = WindowConf{
 	OutEnEnable: true,
 	HeaderFirstVisible: false,
 	HeaderSecondVisible: false,
+	OutInEn: false,
+	ThirdEditEnable: false,
+	HeaderThirdVisible: false,
+	HeaderThirdText: "",
+	ThirdEditVisible: false,
+	EncryptButtonText: Encrypt,
+	DecryptButtonText: Decrypt,
+	InDeEnable: true,
 }
-
+//const
+const KeysQuant = 5
+const EnterKey = "Задайте ключ."
+const EnterTestText = "Вставить тестовый текст"
+const Encrypt = "Зашифровать."
+const DirtyCheck = "Черновая проверка"
+const Decrypt = "Расшифровать."
+const CryptoEx ="Задания по криптографии"
+const CheckWriter = "Сгенерировать подпись."
+const KeyCipherText = "Ключ Шифртекст"
+const AutoKey = "Автоматический ключ"
+const ChangeKeys = "Обменяться ключами."
+const ResultingOurFinalKey = "Получившийся наш общий ключ."
+const ResultingFinalKeyVirtUser = "Получившийся общий ключ виртуального пользователя."
+const EnterN = "Задайте n."
+const EnterA = "Задайте a."
+const EnterKeyVirtUser = "Задайте ключ виртуального пользователя."
+const EnterYourKey = "Задайте свой ключ."
+const AutoKeys = "Автоматические ключи"
+const OurWriter = "Наша подпись."
+const ResultingVirtUserWriter = "Вычисленная виртуальным пользователем подпись."
+const EnterP = "Задайте p."
+const EnterQ = "Задайте q."
+const EnterX = "Задайте x."
+const EnterK = "Задайте k."
+const Splitter = "///split///"
+const OurWriterHash = "Наш хэш"
+const ResultingVirtUserWriterHash = "Вычисленный виртуальным пользователем хэш"
+const EnterGamma = "Введите гамму"
+const AutoGamma = "Автоматическая гамма"
+const CurrentGamma = "Текущая гамма"
 //Paths
 const PathText = "text.txt"
 const PathProverb = "proverb.txt"
+const CurrentE = "Текущее e."
 
 //Errors
 const ErrorTextInValidSym = "в тексте для шифрования содержатся недопустимые символы"
@@ -141,9 +190,9 @@ const ErrorTextCardanRepeatedTwoCipher = "количество элементо�
 const ErrorKeyCardanRepeatedTwoSipher = "количество элементов в строках и столбцах ключа для расшифрования должно быть кратно двум"
 const ErrorKeyCardanSmallSipher = "ключ для расшифрования слишком маленький"
 const ErrorParameterDiffieHellmanBigNum = "параметр слишком большое число"
-const ErrorKeyDiffieHellmanBigNum = "ключ слишком большое число"
+const ErrorKeyBigNum = "ключ слишком большое число"
 const ErrorParameterDiffieHellmanSmallN = "параметр n должен быть больше или равен 3"
-const ErrorParameterDiffieHellmanSmallA = "параметр a должен быть больше 1"
+const ErrorParameterSmallA = "параметр a должен быть больше 1"
 const ErrorParameterDiffieHellmanBigA = "параметр a должен быть меньше n"
 const ErrorKeyDiffieHellmanSmallSV = "секретный ключ виртуального пользователя должен быть не меньше 2"
 const ErrorKeyDiffieHellmanBigSV = "секретный ключ виртуального пользователя должен быть меньше n"
@@ -154,6 +203,16 @@ const ErrorParameterInValidSym = "параметр содержит недопу
 const ErrorParameterASVOverBig = "нужно уменьшить либо параметр а либо секретный ключ виртуального пользователя"
 const ErrorParameterASOOverBig = "нужно уменьшить либо параметр а либо наш секретный ключ"
 const ErrorParameterKeyBig = "нужно уменьшить параметры,общий ключ выходит слишком большим"
+const ErrorParameterPSmall = "параметр p должен быть больше 3"
+const ErrorParameterPNotPrime = "параметр p должен быть простым числом"
+const ErrorParameterQNotPrimeFactor = "параметр q должен быть простым сомножителем p-1"
+const ErrorParameterABiggerP1 = "параметр a должен быть меньше p-1"
+const ErrorParameterAQMODPOverBig = "a должен быть равен d^((p-1)/q), где 1<d<p-1"
+const ErrorParameterXBiggerQ = "параметр x должен быть меньше q"
+const ErrorParameterAXOverBig = "нужно уменьшить либо параметр а либо x"
+const ErrorParameterKBiggerQ = "параметр k должен быть меньше q"
+const ErrorParameterQNotPrime = "параметр q должен быть простым числом"
+const ErrorWriteTextForSignature = "введите текст для подписи"
 //Fonts
 const FontSizeTen = 10
 
@@ -170,3 +229,8 @@ const RegexKeyCipher = `^[а-яё]+$`
 const RegexTextCardanCipher = `^([а-яё]+(\s[а-яё]+)*[\r]?[\n]?)*$`
 const RegexKeyCardan = `^([01](\s[01])*[\r]?[\n]?)*$`
 const RegexKeyDiffieHellman = `^[0-9]+$`
+const RegexKeyGOSTR341094 = `^[0-9]+$`
+const RegexKeyRsaSignature = `^[0-9]+$`
+const RegexKeyRsa = `^[0-9]+$`
+const RegexTextRsa= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`
+const RegexTextShennon= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`

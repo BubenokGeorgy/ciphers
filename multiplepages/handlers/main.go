@@ -315,16 +315,18 @@ func DiffieHellmanKeyHandler(cipher CipherPackage)  string {
 	keys := cipher.Keys
 	re := regexp.MustCompile(regex)
 	for i, keyEdit := range keys{
-		key := keyEdit.Text()
-		if utf8.RuneCountInString(key)==0{
-			return ErrorParameterWrite+ " " + strconv.Itoa(i+1)
-		}
-		if !re.MatchString(key){
-			return strconv.Itoa(i+1) + " " + ErrorParameterInValidSym
-		}
-		_, err := strconv.Atoi(key)
-		if err!=nil {
-			return strconv.Itoa(i+1)+" "+ErrorKeyDiffieHellmanBigNum
+		if keyEdit.Visible() {
+			key := keyEdit.Text()
+			if utf8.RuneCountInString(key) == 0 {
+				return ErrorParameterWrite + " " + strconv.Itoa(i+1)
+			}
+			if !re.MatchString(key) {
+				return strconv.Itoa(i+1) + " " + ErrorParameterInValidSym
+			}
+			_, err := strconv.Atoi(key)
+			if err != nil {
+				return strconv.Itoa(i+1) + " " + ErrorKeyBigNum
+			}
 		}
 	}
 	n, _ := strconv.Atoi(keys[0].Text())
@@ -336,7 +338,7 @@ func DiffieHellmanKeyHandler(cipher CipherPackage)  string {
 		return ErrorParameterDiffieHellmanSmallN
 	}
 	if a<2 {
-		return ErrorParameterDiffieHellmanSmallA
+		return ErrorParameterSmallA
 	}
 	if a>=n {
 		return ErrorParameterDiffieHellmanBigA
@@ -374,5 +376,149 @@ func DiffieHellmanTextHandler(cipher CipherPackage)  string {
 }
 
 func DiffieHellmanStartKeyHandler(cipher CipherPackage)  string {
+	return ""
+}
+
+func GOSTR341094KeyHandler(cipher CipherPackage)  string {
+	regex := cipher.Cipher.KeyErrors[0].Regex
+	keys := cipher.Keys
+	re := regexp.MustCompile(regex)
+	for i, keyEdit := range keys{
+		if keyEdit.Visible() {
+			key := keyEdit.Text()
+			if utf8.RuneCountInString(key) == 0 {
+				return ErrorParameterWrite + " " + strconv.Itoa(i+1)
+			}
+			if !re.MatchString(key) {
+				return strconv.Itoa(i+1) + " " + ErrorParameterInValidSym
+			}
+			_, err := strconv.Atoi(key)
+			if err != nil {
+				return strconv.Itoa(i+1) + " " + ErrorKeyBigNum
+			}
+		}
+	}
+	p, _ := strconv.Atoi(keys[0].Text())
+	q, _ := strconv.Atoi(keys[1].Text())
+	a,_ := strconv.Atoi(keys[2].Text())
+	x,_ := strconv.Atoi(keys[3].Text())
+	k,_ := strconv.Atoi(keys[4].Text())
+
+	if p<4 {
+		return ErrorParameterPSmall
+	}
+	if !IsPrime(p){
+		return ErrorParameterPNotPrime
+	}
+	if !IsPrimeFactor(p-1, q){
+		return ErrorParameterQNotPrimeFactor
+	}
+	if a < 2 {
+		return ErrorParameterSmallA
+	}
+	if a >= p-1 {
+		return ErrorParameterABiggerP1
+	}
+	check := false
+	for d:=2;d<p-1;d++{
+		test := int(math.Pow(float64(d), float64((p-1)/q)))%p
+		if test==a{
+			check = true
+			break
+		}
+	}
+	if !check{
+		return ErrorParameterAQMODPOverBig
+	}
+
+	if x>=q{
+		return ErrorParameterXBiggerQ
+	}
+	y := int(math.Pow(float64(a), float64(x)))%p
+	if y<0{
+		return ErrorParameterAXOverBig
+	}
+	if k>=q{
+		return ErrorParameterKBiggerQ
+	}
+	return ""
+}
+
+
+func GOSTR341094StartKeyHandler(cipher CipherPackage)  string {
+	return ""
+}
+
+func RsaSignatureKeyHandler(cipher CipherPackage)  string {
+	regex := cipher.Cipher.KeyErrors[0].Regex
+	keys := cipher.Keys
+	re := regexp.MustCompile(regex)
+	for i, keyEdit := range keys{
+		if keyEdit.Visible() {
+			key := keyEdit.Text()
+			if utf8.RuneCountInString(key) == 0 {
+				return ErrorParameterWrite + " " + strconv.Itoa(i+1)
+			}
+			if !re.MatchString(key) {
+				return strconv.Itoa(i+1) + " " + ErrorParameterInValidSym
+			}
+			_, err := strconv.Atoi(key)
+			if err != nil {
+				return strconv.Itoa(i+1) + " " + ErrorKeyBigNum
+			}
+		}
+	}
+	p, _ := strconv.Atoi(keys[0].Text())
+	q, _ := strconv.Atoi(keys[1].Text())
+
+	if !IsPrime(p){
+		return ErrorParameterPNotPrime
+	}
+	if !IsPrime(q){
+		return ErrorParameterQNotPrime
+	}
+	return ""
+}
+
+func RsaStartKeyHandler(cipher CipherPackage)  string {
+	return ""
+}
+
+func RsaKeyHandler(cipher CipherPackage)  string {
+	regex := cipher.Cipher.KeyErrors[0].Regex
+	keys := cipher.Keys
+	re := regexp.MustCompile(regex)
+	for i, keyEdit := range keys{
+		if keyEdit.Visible() {
+			key := keyEdit.Text()
+			if utf8.RuneCountInString(key) == 0 {
+				return ErrorParameterWrite + " " + strconv.Itoa(i+1)
+			}
+			if !re.MatchString(key) {
+				return strconv.Itoa(i+1) + " " + ErrorParameterInValidSym
+			}
+			_, err := strconv.Atoi(key)
+			if err != nil {
+				return strconv.Itoa(i+1) + " " + ErrorKeyBigNum
+			}
+		}
+	}
+	p, _ := strconv.Atoi(keys[0].Text())
+	q, _ := strconv.Atoi(keys[1].Text())
+
+	if !IsPrime(p){
+		return ErrorParameterPNotPrime
+	}
+	if !IsPrime(q){
+		return ErrorParameterQNotPrime
+	}
+	return ""
+}
+
+func RsaSignatureStartKeyHandler(cipher CipherPackage)  string {
+	return ""
+}
+
+func ShennonKeyHandler(cipher CipherPackage)  string {
 	return ""
 }

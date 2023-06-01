@@ -6,6 +6,7 @@ import (
 	. "main/const"
 	. "main/tools"
 	"math"
+	"math/big"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -283,9 +284,9 @@ func MatrixEncrypt(text string, keys []*walk.TextEdit) string {
 	resultAr := []string{}
 	matrix := GetMatrix(key)
 	rand.Seed(time.Now().UnixNano())
-	if utf8.RuneCountInString(text)%len(matrix)!=0{
-		for i:=0;i<len(matrix)-utf8.RuneCountInString(text)%len(matrix);i++{
-			text+= GetElement(Dictionary, rand.Intn(len(Dictionary)))
+	if utf8.RuneCountInString(text)%len(matrix) != 0 {
+		for i := 0; i < len(matrix)-utf8.RuneCountInString(text)%len(matrix); i++ {
+			text += GetElement(Dictionary, rand.Intn(len(Dictionary)))
 		}
 	}
 	i := 0
@@ -339,7 +340,7 @@ func MatrixDecrypt(text string, keys []*walk.TextEdit) string {
 			}
 		}
 		masText = masText[:len(masText)-1]
-		text = strings.Join(masText," ")+" "+MatrixEncrypt(enText, keys)
+		text = strings.Join(masText, " ") + " " + MatrixEncrypt(enText, keys)
 	}
 	i = 0
 	for _, v := range strings.Split(text, " ") {
@@ -490,7 +491,7 @@ func CardanGrilleEncryptStart(text string, keys []*walk.TextEdit) string {
 }
 
 func CardanGrilleDecryptStart(text string, keys []*walk.TextEdit) string {
-	return CardanGrilleDecrypt(text,keys)
+	return CardanGrilleDecrypt(text, keys)
 }
 
 func CardanGrilleEncrypt(text string, keys []*walk.TextEdit) string {
@@ -606,10 +607,10 @@ func CardanGrilleDecrypt(text string, keys []*walk.TextEdit) string {
 
 func DiffieHellmanEncryptStart(text string, keys []*walk.TextEdit) string {
 	rand.Seed(time.Now().UnixNano())
-	n:= rand.Intn(16)+3
-	a:= rand.Intn(n-2)+2
-	sV :=rand.Intn(n-2)+2
-	sO := rand.Intn(n-2)+2
+	n := rand.Intn(300) + 3
+	a := rand.Intn(n-2) + 2
+	sV := rand.Intn(n-2) + 2
+	sO := rand.Intn(n-2) + 2
 	keys[0].SetText(strconv.Itoa(n))
 	keys[1].SetText(strconv.Itoa(a))
 	keys[2].SetText(strconv.Itoa(sV))
@@ -618,16 +619,237 @@ func DiffieHellmanEncryptStart(text string, keys []*walk.TextEdit) string {
 }
 
 func DiffieHellmanEncrypt(text string, keys []*walk.TextEdit) string {
-	n, _ := strconv.Atoi(keys[0].Text())
-	a, _ := strconv.Atoi(keys[1].Text())
-	sV,_ := strconv.Atoi(keys[2].Text())
-	sO,_ := strconv.Atoi(keys[3].Text())
-	sVOpen := int(math.Pow(float64(a), float64(sV)))%n
-	sOOpen := int(math.Pow(float64(a), float64(sO)))%n
-	keySO := int(math.Pow(float64(sVOpen), float64(sO)))%n
-	keySV := int(math.Pow(float64(sOOpen), float64(sV)))%n
-	if keySO==keySV{
-		return strconv.Itoa(keySO)
-	}
-	return ""
+	n := new(big.Int)
+	n.SetString(keys[0].Text(), 10)
+
+	a := new(big.Int)
+	a.SetString(keys[1].Text(), 10)
+
+	sV := new(big.Int)
+	sV.SetString(keys[2].Text(), 10)
+
+	sO := new(big.Int)
+	sO.SetString(keys[3].Text(), 10)
+
+	sVOpen := new(big.Int).Exp(a, sV, n)
+	sOOpen := new(big.Int).Exp(a, sO, n)
+	keySO := new(big.Int).Exp(sVOpen, sO, n)
+	keySV := new(big.Int).Exp(sOOpen, sV, n)
+
+	return keySO.String() + Splitter + keySV.String()
 }
+
+func GOSTR341094EncryptStart(text string, keys []*walk.TextEdit) string {
+	rand.Seed(time.Now().UnixNano())
+	var p, q, a int
+	for {
+		p = GeneratePrimeNumber()
+		q = GenerateQ(p)
+		for d := 2; d < p-1; d++ {
+			test := int(math.Pow(float64(d), float64((p-1)/q))) % p
+			if test > 1 {
+				a = test
+				break
+			}
+		}
+		if a != 0 {
+			break
+		}
+	}
+	x := rand.Intn(q-1) + 1
+	k := rand.Intn(q-1) + 1
+	keys[0].SetText(strconv.Itoa(p))
+	keys[1].SetText(strconv.Itoa(q))
+	keys[2].SetText(strconv.Itoa(a))
+	keys[3].SetText(strconv.Itoa(x))
+	keys[4].SetText(strconv.Itoa(k))
+	return GOSTR341094Encrypt(text, keys)
+}
+
+func GOSTR341094Encrypt(text string, keys []*walk.TextEdit) string {
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
+	a, _ := new(big.Int).SetString(keys[2].Text(), 10)
+	x, _ := new(big.Int).SetString(keys[3].Text(), 10)
+	k, _ := new(big.Int).SetString(keys[4].Text(), 10)
+
+	hash := GetHash(text, p)
+	if hash.Mod(hash, q).Cmp(big.NewInt(0)) == 0 {
+		hash.SetInt64(1)
+	}
+
+	y := new(big.Int).Exp(a, x, p)
+	r := new(big.Int).Exp(a, k, p)
+	r.Mod(r, q)
+
+	s1 := new(big.Int).Mul(x, r)
+	s2 := new(big.Int).Mul(k, hash)
+	s := new(big.Int).Add(s1, s2)
+	s.Mod(s, q)
+
+	v := new(big.Int).ModInverse(hash, q)
+
+	z1 := new(big.Int).Mul(s, v)
+	z1.Mod(z1, q)
+	z2 := new(big.Int).Sub(q, r)
+	z2.Mul(z2, v)
+	z2.Mod(z2, q)
+
+	u1 := new(big.Int).Exp(a, z1, p)
+	u2 := new(big.Int).Exp(y, z2, p)
+	u := new(big.Int).Mul(u1, u2)
+	u.Mod(u, p)
+	u.Mod(u, q)
+
+	return r.String() + Splitter + u.String()
+}
+
+func RsaSignatureEncryptStart(text string, keys []*walk.TextEdit) string {
+	p := GeneratePrimeNumber()
+	q := GeneratePrimeNumber()
+	keys[0].SetText(strconv.Itoa(p))
+	keys[1].SetText(strconv.Itoa(q))
+	return RsaSignatureEncrypt(text, keys)
+}
+
+func RsaSignatureEncrypt(text string, keys []*walk.TextEdit) string {
+	rand.Seed(time.Now().UnixNano())
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
+	n := new(big.Int).Mul(p, q)
+	f := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
+	var temp []int64
+	for i := 2; i < int(f.Int64()); i++ {
+		if Gcd(i, int(f.Int64())) == 1 {
+			temp = append(temp, int64(i))
+		}
+	}
+	e := temp[rand.Intn(len(temp))]
+	d := big.NewInt(1)
+	for {
+		if new(big.Int).Mod(new(big.Int).Mul(d, big.NewInt(int64(e))), f).Cmp(big.NewInt(1)) == 0 {
+			break
+		}
+		d.Add(d, big.NewInt(1))
+	}
+	hash := GetHash(text, n)
+	oU := new(big.Int).Exp(hash, d, n).Int64()
+	m := new(big.Int).Exp(big.NewInt(oU), big.NewInt(int64(e)), n).Int64()
+	return strconv.Itoa(int(hash.Int64())) + Splitter + strconv.Itoa(int(m))
+}
+
+func RsaEncryptStart(text string, keys []*walk.TextEdit) string {
+
+	p := GeneratePrimeNumber()
+	q := GeneratePrimeNumber()
+	keys[0].SetText(strconv.Itoa(p))
+	keys[1].SetText(strconv.Itoa(q))
+	return RsaEncrypt(text, keys)
+}
+
+func RsaEncrypt(text string, keys []*walk.TextEdit) string {
+	rand.Seed(time.Now().UnixNano())
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
+	n := new(big.Int).Mul(p, q)
+	f := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
+	var temp []int64
+	for i := 2; i < int(f.Int64()); i++ {
+		if Gcd(i, int(f.Int64())) == 1 {
+			temp = append(temp, int64(i))
+		}
+	}
+	e := temp[rand.Intn(len(temp))]
+	keys[3].SetText(strconv.Itoa(int(e)))
+	d := big.NewInt(1)
+	for {
+		if new(big.Int).Mod(new(big.Int).Mul(d, big.NewInt(int64(e))), f).Cmp(big.NewInt(1)) == 0 {
+			break
+		}
+		d.Add(d, big.NewInt(1))
+	}
+	var result string
+	var mas []string
+	for _, v := range text {
+		h := IndexOf(string(v), Dictionary)
+		oU := new(big.Int).Exp(big.NewInt(int64(h)), d, n).Int64()
+		mas = append(mas, strconv.Itoa(int(oU)))
+	}
+	result = strings.Join(mas, " ")
+	return result
+}
+
+
+func RsaDecryptStart(text string, keys []*walk.TextEdit) string {
+	p := GeneratePrimeNumber()
+	q := GeneratePrimeNumber()
+	if len(keys[0].Text())==0 {
+		keys[0].SetText(strconv.Itoa(p))
+		keys[1].SetText(strconv.Itoa(q))
+	}
+	return RsaDecrypt(text, keys)
+}
+
+func RsaDecrypt(text string, keys []*walk.TextEdit) string {
+	mas := strings.Split(text, " ")
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
+	n := new(big.Int).Mul(p, q)
+	e , _:= new(big.Int).SetString(keys[3].Text(), 10)
+	var result string
+	for _, v := range mas{
+		num,_ := strconv.Atoi(v)
+		m := new(big.Int).Exp(big.NewInt(int64(num)), e, n).Int64()
+		result+=GetElement(Dictionary, int(m))
+	}
+	return result
+}
+
+func ShennonEncrypt(text string,keys []*walk.TextEdit ) string {
+	rand.Seed(time.Now().UnixNano())
+	gamma := GenerateGamma(utf8.RuneCountInString(text),rand.Intn(100)+1)
+	var gammaMas []int
+	for _,v:= range strings.Split(gamma," "){
+		num, _ := strconv.Atoi(v)
+		gammaMas = append(gammaMas, num)
+	}
+	fmt.Println(gamma)
+	keys[0].SetText(gamma)
+	encrypted := ""
+	i:=0
+	for _, v:= range text {
+		ci := IndexOf(string(v),Dictionary)^gammaMas[i]
+		encrypted += GetElement(Dictionary, ci)
+		i++
+	}
+	fmt.Println(encrypted)
+	return encrypted
+}
+
+func ShennonDecrypt(text string, keys []*walk.TextEdit) string {
+	decrypted := ""
+	gamma := keys[0].Text()
+	if len(gamma)==0{
+		gamma = GenerateGamma(utf8.RuneCountInString(text),rand.Int())
+		keys[0].SetText(gamma)
+	}
+	var gammaMas []int
+	for _,v:= range strings.Split(gamma," "){
+		num, _ := strconv.Atoi(v)
+		gammaMas = append(gammaMas, num)
+	}
+	var textMas []int
+	for _, v := range text{
+		textMas = append(textMas, IndexOf(string(v), Dictionary))
+	}
+	i := 0
+	for _,v := range textMas{
+		ci := v^gammaMas[i]
+		decrypted += GetElement(Dictionary,ci)
+		i++
+	}
+	return decrypted
+}
+
+
+

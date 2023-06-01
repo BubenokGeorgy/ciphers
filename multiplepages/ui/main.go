@@ -8,6 +8,7 @@ import (
 	"main/errors"
 	. "main/tools"
 	"reflect"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -263,7 +264,7 @@ func (mw *AppMainWindow) UpdateTitle(prefix string) {
 		buf.WriteString(" - ")
 	}
 
-	buf.WriteString("Задания по криптографии")
+	buf.WriteString(CryptoEx)
 
 	mw.SetTitle(buf.String())
 }
@@ -280,7 +281,7 @@ func SetTextAfterDecrypt(inDe, outDe *walk.TextEdit, keys []*walk.TextEdit, deCo
 		outDe.SetText(deConvertText(textDe))
 	}
 }
-func SetTextAfterEncrypt(inEn, inDe, outEn *walk.TextEdit, keys []*walk.TextEdit, convertText func (string) string, encrypt CiphersErrors) bool {
+func SetTextAfterEncrypt(inEn, inDe, outEn, third *walk.TextEdit, keys []*walk.TextEdit,windowConf WindowConf, convertText func (string) string, encrypt CiphersErrors) bool {
 	for _, key := range keys{
 		if !key.Enabled(){
 			key.SetText("")
@@ -291,23 +292,35 @@ func SetTextAfterEncrypt(inEn, inDe, outEn *walk.TextEdit, keys []*walk.TextEdit
 		outEn.SetText(errorEn)
 		return false
 	} else {
-		outEn.SetText(textEn)
+		if !windowConf.OutInEn{
+			outEn.SetText(textEn)
+		} else {
+			text := strings.Split(textEn,Splitter)
+			if third.Visible(){
+				outEn.SetText(text[0])
+				third.SetText(text[1])
+			} else {
+				inEn.SetText(text[0])
+				outEn.SetText(text[1])
+			}
+
+		}
 		inDe.SetText(textEn)
 	}
 	return true
 }
 
 func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
-	var inEn, outEn, inDe, outDe *walk.TextEdit
+	var inEn, outEn, inDe, outDe, third *walk.TextEdit
 	var convertText = CleanConvertText
 	var deConvertText = CleanDeConvertText
 	var encrypt = newComposite.Ciphers[0].Encrypt
 	var decrypt = newComposite.Ciphers[0].Decrypt
 	if len(newComposite.Keys)==0{
-		newComposite.Keys = []Key{{Label: "Задайте ключ.", Visible: true}}
+		newComposite.Keys = []Key{{Label: EnterKey, Visible: true, Enable: true}}
 	}
-	if len(newComposite.Keys)<4{
-		for i:= len(newComposite.Keys);i<4;i++{
+	if len(newComposite.Keys)<KeysQuant{
+		for i:= len(newComposite.Keys);i<KeysQuant;i++{
 			newComposite.Keys = append(newComposite.Keys,Key{Visible: false})
 		}
 	}
@@ -348,7 +361,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 											MinSize: Size{
 												Height: 60,
 											},
-											Text: "Вставить тестовый текст",
+											Text: EnterTestText,
 											OnClicked: func() {
 												SetTestText(inEn, convertText)
 											},
@@ -371,16 +384,32 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 											AssignTo: &outEn},
 									}},
 								HSplitter{
+									Visible: newComposite.WindowConf.HeaderThirdVisible,
+									Children: []Widget{
+										Label{
+											Text: newComposite.WindowConf.HeaderThirdText},
+									}},
+								HSplitter{
+									Visible: newComposite.WindowConf.ThirdEditVisible,
+									Children: []Widget{
+										TextEdit{
+											Enabled: newComposite.WindowConf.ThirdEditEnable,
+											VScroll:  true,
+											AssignTo: &third},
+									}},
+								HSplitter{
 									Visible: newComposite.WindowConf.EncryptButtonVisible,
 									Children: []Widget{
 										PushButton{
 											MinSize: Size{
 												Height: 60,
 											},
-											Text: "Зашифровать.",
+											Text:newComposite.WindowConf.EncryptButtonText,
 											OnClicked: func() {
-												if SetTextAfterEncrypt(inEn, inDe, outEn, keys, convertText, encrypt){
-													SetTextAfterDecrypt(inDe, outDe, keys,deConvertText,decrypt)
+												if SetTextAfterEncrypt(inEn, inDe, outEn, third, keys,newComposite.WindowConf, convertText, encrypt){
+													if !newComposite.WindowConf.ThirdEditVisible {
+														SetTextAfterDecrypt(inDe, outDe, keys,deConvertText,decrypt)
+													}
 												}
 											},
 										},
@@ -398,7 +427,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 						},
 						Text: newComposite.WindowConf.LongButtonText,
 						OnClicked: func() {
-							SetTextAfterEncrypt(inEn, inDe, outEn, keys, convertText, encrypt)
+							SetTextAfterEncrypt(inEn, inDe, outEn, third, keys,newComposite.WindowConf, convertText, encrypt)
 						},
 					},
 				}},
@@ -412,6 +441,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 								StretchFactor: 10,
 								Children: []Widget{
 									TextEdit{
+										Enabled: newComposite.WindowConf.InDeEnable,
 										VScroll:  true,
 										AssignTo: &inDe},
 								}},
@@ -427,7 +457,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 										Children: []Widget{
 											CheckBox{
 												Visible: newComposite.WindowConf.DirtyCheckVisible,
-												Text: "Черновая проверка",
+												Text: DirtyCheck,
 												OnCheckedChanged: func() {
 													if reflect.ValueOf(convertText) == reflect.ValueOf(CleanConvertText) {
 														convertText = DirtyConvertText
@@ -455,15 +485,17 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 												Text:    newComposite.VariabilityText,
 												Visible: newComposite.AutoKeys,
 												OnCheckedChanged: func() {
-													for _, key := range keys{
-														if key.Enabled(){
-															key.SetEnabled(false)
-															encrypt = newComposite.Ciphers[1].Encrypt
-															decrypt = newComposite.Ciphers[1].Decrypt
-														} else {
-															encrypt = newComposite.Ciphers[0].Encrypt
-															decrypt = newComposite.Ciphers[0].Decrypt
-															key.SetEnabled(true)
+													for i, key := range keys{
+														if !newComposite.Keys[i].Const&&newComposite.Keys[i].Enable {
+															if key.Enabled() {
+																key.SetEnabled(false)
+																encrypt = newComposite.Ciphers[1].Encrypt
+																decrypt = newComposite.Ciphers[1].Decrypt
+															} else {
+																encrypt = newComposite.Ciphers[0].Encrypt
+																decrypt = newComposite.Ciphers[0].Decrypt
+																key.SetEnabled(true)
+															}
 														}
 													}
 												},
@@ -476,6 +508,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 												Text:newComposite.Keys[0].Label,
 											},
 											TextEdit{
+												Enabled: newComposite.Keys[0].Enable,
 												VScroll: true,
 												AssignTo: &keys[0],
 											},
@@ -487,6 +520,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 												Text:newComposite.Keys[1].Label,
 											},
 											TextEdit{
+												Enabled: newComposite.Keys[1].Enable,
 												VScroll: true,
 												AssignTo: &keys[1],
 											},
@@ -498,6 +532,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 												Text:newComposite.Keys[2].Label,
 											},
 											TextEdit{
+												Enabled: newComposite.Keys[2].Enable,
 												VScroll: true,
 												AssignTo: &keys[2],
 											},
@@ -509,8 +544,21 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 												Text:newComposite.Keys[3].Label,
 											},
 											TextEdit{
+												Enabled: newComposite.Keys[3].Enable,
 												VScroll: true,
 												AssignTo: &keys[3],
+											},
+										}},
+									VSplitter{
+										Visible: newComposite.Keys[4].Visible,
+										Children: []Widget{
+											Label{
+												Text:newComposite.Keys[4].Label,
+											},
+											TextEdit{
+												Enabled: newComposite.Keys[4].Enable,
+												VScroll: true,
+												AssignTo: &keys[4],
 											},
 										}},
 								}},
@@ -531,7 +579,7 @@ func GenerateComposite(p *NewPage, newComposite NewComposite) Composite {
 										MinSize: Size{
 											Height: 60,
 										},
-										Text: "Расшифровать",
+										Text: newComposite.WindowConf.DecryptButtonText,
 										OnClicked: func() {
 											SetTextAfterDecrypt(inDe, outDe,keys,deConvertText,decrypt)
 										},

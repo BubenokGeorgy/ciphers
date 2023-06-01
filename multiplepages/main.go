@@ -34,6 +34,11 @@ func main() {
 			{"Вертикальная перестановка", "key.png", NewVerticalPermutationPage},
 			{"Решётка Кардано", "key.png", NewCardanGrillePage},
 			{"Диффи-Хеллман", "key.png", NewDiffieHellmanPage},
+			{"ГОСТ Р 34.10-94", "key.png", NewGOSTR341094},
+			{"RSA цифровая подпись", "key.png", NewRsaSignaturePage},
+			{"RSA шифр", "key.png", NewRsaPage},
+			{"Блокнот Шеннона", "key.png", NewShennonPage},
+
 		},
 	}
 

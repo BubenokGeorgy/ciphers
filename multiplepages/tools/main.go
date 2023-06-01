@@ -6,6 +6,7 @@ import (
 	. "main/const"
 	"main/data"
 	"math"
+	"math/big"
 	"math/rand"
 	"reflect"
 	"regexp"
@@ -289,6 +290,24 @@ func IndexOfStr(element, key string) int {
 	return -1
 }
 
+// Генерация символьной гаммы
+func GenerateGamma(size int, seed int) string {
+	gamma := ""
+	m := len(Dictionary)
+	a := 3 // Простое нечетное число
+	c := seed // Исходное значение порождающего числа
+	var mas []string
+	for i := 0; i < size; i++ {
+		c = (a*c + c) % m
+		if c==0{
+			c = 1
+		}
+		mas = append(mas,strconv.Itoa(c))
+	}
+	gamma = strings.Join(mas," ")
+	return gamma
+}
+
 func HasSymmetricOnes(matrix [][]float64, h, w int) bool {
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
@@ -457,6 +476,76 @@ func GetPlayfairTable(key string, tableLen int, dictionary []string)[][]string {
 		}
 	}
 	return mas
+}
+
+func IsPrime(n int) bool {
+	if n <= 1 {
+		return false
+	}
+	for i := 2; i*i <= n; i++ {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPrimeFactor(p, q int) bool {
+	if q!=0 && p % q == 0 {
+		if IsPrime(q){
+			return true
+		}
+	}
+	return false
+}
+
+func GetHash(text string, mod *big.Int) *big.Int {
+	h := big.NewInt(0)
+	for _, v := range text {
+		num := IndexOf(string(v), Dictionary) + 1
+		h.Add(h, big.NewInt(int64(num)))
+		h.Mul(h, h)
+		h.Mod(h, big.NewInt(mod.Int64()))
+	}
+	return h
+}
+
+func Gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func GeneratePrimeNumber() int {
+	for {
+		// Generating a random integer between 3 and 100
+		num := rand.Intn(298) + 4
+		prime := true
+		// Loop through numbers from 2 to the square root of the number, to check if it's prime
+		for i := 2; i*i <= num; i++ {
+			if num%i == 0 {
+				prime = false
+				break
+			}
+		}
+		if prime {
+			return num
+		}
+	}
+}
+
+// Function to generate a q value that is a prime factor of (p-1)
+func GenerateQ(p int) int {
+	for {
+		q := rand.Intn(p-2) + 2
+		if (p-1)%q == 0 {
+			if IsPrime(q){
+				return q
+			}
+			// Q is a prime factor of (p-1)
+		}
+	}
 }
 
 func GetErrorText(cipher CipherPackage) string {

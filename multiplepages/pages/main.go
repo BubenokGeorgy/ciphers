@@ -662,14 +662,52 @@ func NewA51Page(parent walk.Container) (Page, error) {
 		VariabilityVisible: false,
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
-				Cipher: ciphers.ShennonEncrypt,
+				Cipher: ciphers.A51Encrypt,
 				TextErrors: TextErrors,
-				KeyErrorsHandler: ShennonKeyHandler,
+				KeyErrorsHandler: A51KeyHandler,
 			},
 			Decrypt: CiphersErrors{
-				Cipher: ciphers.ShennonDecrypt,
+				Cipher: ciphers.A51Decrypt,
 				TextErrors: CipherTextErrors,
-				KeyErrorsHandler: ShennonKeyHandler,
+				KeyErrorsHandler:A51KeyHandler,
+			},
+		},
+		},
+	}
+	page.WindowConf.InDeEnable = false
+	p := new(NewPage)
+	if err := (GenerateComposite(p, page)).Create(NewBuilder(parent)); err != nil {
+		return nil, err
+	}
+	if err := walk.InitWrapperWindow(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func MagmaPage(parent walk.Container) (Page, error) {
+	page := NewComposite{
+		FontSize:        FontSizeTen,
+		WindowConf:      WindowConfStandard,
+		AutoKeys:        false,
+		Keys:            []Key{{Label: EnterKey , Visible: true, Enable: true}},
+		VariabilityVisible: false,
+		Ciphers: []EnDecrypt{{
+			Encrypt: CiphersErrors{
+				Cipher: ciphers.MagmaEncrypt,
+				TextErrors: TextErrors,
+				KeyErrors: []Errors{{
+					Regex:     RegexKeyMagma,
+					ErrorsList: KeyErrors.ErrorsList,
+				}},
+			},
+			Decrypt: CiphersErrors{
+				Cipher: ciphers.MagmaDecrypt,
+				TextErrors: CipherTextErrors,
+				KeyErrors: []Errors{{
+					Regex:     RegexKeyMagma,
+					ErrorsList: CipherKeyErrors.ErrorsList,
+				}},
 			},
 		},
 		},

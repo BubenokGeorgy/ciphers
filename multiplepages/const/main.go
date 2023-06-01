@@ -15,6 +15,12 @@ type Key struct {
 	Const bool
 }
 
+type register struct {
+	data     uint64
+	length   byte
+	feedback []byte // polynomial coefficients
+}
+
 type WindowConf struct {
 	InDeVisible bool
 	OutDeVisible bool
@@ -234,3 +240,4 @@ const RegexKeyRsaSignature = `^[0-9]+$`
 const RegexKeyRsa = `^[0-9]+$`
 const RegexTextRsa= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`
 const RegexTextShennon= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`
+const RegexKeyMagma = `^[а-я]+$`

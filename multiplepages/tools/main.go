@@ -308,6 +308,88 @@ func GenerateGamma(size int, seed int) string {
 	return gamma
 }
 
+func GenerateA51Gamma(key uint64, frameNumber uint32, textLen int) string {
+	r1 := uint64(0)
+	r2 := uint64(0)
+	r3 := uint64(0)
+	output := make([]byte, 0)
+
+	// Инициализация регистров, сдвиг на первых 64 тактах
+	for i := 0; i < 64; i++ {
+		bit := (key>>i)&1 ^ uint64(frameNumber>>i)&1
+		r1 = ShiftRegister(r1, 19, 0, true, bit)
+		r2 = ShiftRegister(r2, 22, 0, true, bit)
+		r3 =ShiftRegister(r3, 23, 0, true, bit)
+	}
+
+	// Следующие 22 такта XOR с номером кадра
+	for i := 0; i < 22; i++ {
+		bit := (frameNumber>>i)&1 ^ 1
+		r1 = ShiftRegister(r1, 19, 0, true, uint64(bit))
+		r2 = ShiftRegister(r2, 22, 0, true, uint64(bit))
+		r3 = ShiftRegister(r3, 23, 0, true, uint64(bit))
+	}
+
+	// Управление сдвигами регистров и генерация последовательности на следующих 100 тактах
+	for i := 0; i < 100; i++ {
+		f := (r1>>8)&1 & (r2>>10)&1 | (r1>>8)&1 & (r3>>10)&1 | (r2>>10)&1 & (r3>>10)&1
+		if f&(1<<0) != 0 {
+			r1 = ShiftRegister(r1, 19, 0, false, 0)
+		}
+		if f&(1<<1) != 0 {
+			r2 = ShiftRegister(r2, 22, 0, false, 0)
+		}
+		if f&(1<<2) != 0 {
+			r3 = ShiftRegister(r3, 23, 0, false, 0)
+		}
+
+		// Вычисление выходного бита
+		outputBit := r1&1 ^ r2&1 ^ r3&1
+		output = append(output, byte(outputBit))
+
+		r1 = ShiftRegister(r1, 19, 0, true, outputBit)
+		r2 = ShiftRegister(r2, 22, 0, true, outputBit)
+		r3 =ShiftRegister(r3, 23, 0, true, outputBit)
+	}
+	var textOut []string
+	rand.Seed(time.Now().UnixNano())
+	for _, v:= range output{
+		num := rand.Intn(2-int(v))+int(v)
+		textOut = append(textOut,strconv.Itoa(num))
+	}
+	for i:= len(textOut);i<textLen;i++{
+		num := rand.Intn(2)
+		textOut = append(textOut,strconv.Itoa(num))
+	}
+	result := strings.Join(textOut," ")
+	return result
+}
+
+func GenerateKey() uint64 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Uint64()
+}
+
+// Генерирует случайный 22-битный номер кадра
+func GenerateFrameNumber() uint32 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Uint32() & ((1 << 22) - 1)
+}
+
+func ShiftRegister(reg uint64, len int, pos int, leftShift bool, newBit uint64) uint64 {
+	if leftShift {
+		reg <<= 1
+		reg |= newBit
+		if len >= 64 {
+			reg &= (1 << len) - 1
+		}
+	} else {
+		reg >>= 1
+		reg |= newBit << (len - 1)
+	}
+	return reg
+}
+
 func HasSymmetricOnes(matrix [][]float64, h, w int) bool {
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {

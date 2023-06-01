@@ -1,6 +1,7 @@
 package ciphers
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/lxn/walk"
 	. "main/const"
@@ -851,5 +852,209 @@ func ShennonDecrypt(text string, keys []*walk.TextEdit) string {
 	return decrypted
 }
 
+func A51Encrypt(text string,keys []*walk.TextEdit ) string {
+	rand.Seed(time.Now().UnixNano())
+	gamma := GenerateA51Gamma(GenerateKey(),GenerateFrameNumber(), utf8.RuneCountInString(text))
+	var gammaMas []int
+	for _,v:= range strings.Split(gamma," "){
+		num, _ := strconv.Atoi(v)
+		gammaMas = append(gammaMas, num)
+	}
+	fmt.Println(gamma)
+	keys[0].SetText(gamma)
+	encrypted := ""
+	i:=0
+	for _, v:= range text {
+		if i < len(gammaMas) {
+			ci := IndexOf(string(v), Dictionary) ^ gammaMas[i]
+			encrypted += GetElement(Dictionary, ci)
+			i++
+		}
+	}
+	return encrypted
+}
+
+func A51Decrypt(text string, keys []*walk.TextEdit) string {
+	decrypted := ""
+	gamma := keys[0].Text()
+	if len(gamma)==0{
+		gamma := GenerateA51Gamma(GenerateKey(),GenerateFrameNumber(), utf8.RuneCountInString(text))
+		keys[0].SetText(gamma)
+	}
+	var gammaMas []int
+	for _,v:= range strings.Split(gamma," "){
+		num, _ := strconv.Atoi(v)
+		gammaMas = append(gammaMas, num)
+	}
+	var textMas []int
+	for _, v := range text{
+		textMas = append(textMas, IndexOf(string(v), Dictionary))
+	}
+	i := 0
+	for _,v := range textMas{
+		ci := v^gammaMas[i]
+		decrypted += GetElement(Dictionary,ci)
+		i++
+	}
+	return decrypted
+	return ""
+}
+
+var dict = []byte{
+	0x32, 0x88, 0x4d, 0x41, 0x2b, 0x29, 0x4a, 0x24,
+	0x14, 0x1e, 0xb, 0x7, 0x8e, 0x86, 0x3a, 0x17,
+	0x8, 0x92, 0x1a, 0x3c, 0x6d, 0x46, 0x5d, 0x9d,
+	0x1d, 0x3, 0x61, 0x69, 0xf, 0x7d, 0x27, 0x6f,
+	0xa, 0x47, 0xf0, 0xf1, 0x2, 0xc, 0xff, 0xee,
+	0x49, 0x44, 0xb8, 0x21, 0x19, 0x9, 0xbe, 0xd8,
+	0x7c, 0x6, 0xe, 0x74, 0x31, 0x15, 0x1f, 0xc9,
+	0x87, 0xaa, 0xba, 0x3e, 0x96, 0x5c, 0x83, 0x4b,
+}
+
+// Функция шифрования шифром магма
+func MagmaEncrypt(text string,  keys []*walk.TextEdit) string {
+	var ct []string
+	keys[1].SetText(text)
+	key := keys[0].Text()
+	// Приводим текст и ключ к байтам
+	pt := []byte(text)
+	k := []byte(key)
+
+	// Дополняем ключ нулями до 32 байт
+	for len(k) < 32 {
+		k = append(k, 0x00)
+	}
+
+	// Дополняем текст нулями до кратности 8
+	for len(pt)%8 != 0 {
+		pt = append(pt, 0x00)
+	}
+
+	// Шифруем блоки по 8 байт
+	for i := 0; i < len(pt); i += 8 {
+		// Преобразуем текст в uint32
+		block := make([]uint32, 2)
+		for j := 0; j < 8; j += 4 {
+			block[j/4] = uint32(pt[i+j]) | uint32(pt[i+j+1])<<8 | uint32(pt[i+j+2])<<16 | uint32(pt[i+j+3])<<24
+		}
+
+		// XOR блока с первыми 32 байтами ключа
+		for j := 0; j < 2; j++ {
+			block[j] ^= binary.BigEndian.Uint32(k[j*4 : (j+1)*4])
+		}
+
+		// 31 раунд шифрования
+		for j := 0; j < 31; j++ {
+			// Переменная t получается как результат гаммирования блока и ключа
+			var t uint32
+			if (j+5)*4<=31{
+				t = binary.BigEndian.Uint32(k[(j+4)*4:(j+5)*4]) ^ gamma(block[1], dict, j)
+			}
+			// Результаты t и блока смешиваются
+			block[0], block[1] = block[1], block[0]^f(t)
+
+		}
 
 
+		// Добавляем зашифрованный блок к результату
+		for j := 0; j < 8; j++ {
+			ct = append(ct, GetElement(Dictionary,int(byte(block[j/4]>>(j%4*8)))%len(Dictionary)))
+		}
+	}
+
+	// Возвращаем результат в виде строки
+	return strings.Join(ct,"")
+}
+
+// Функция расшифрования шифром магма
+func MagmaDecrypt(ciphertext string, keys []*walk.TextEdit) string {
+	var pt []string
+	key := keys[0].Text()
+	// Приводим текст и ключ к байтам
+	ct := []byte(ciphertext)
+	k := []byte(key)
+
+	// Дополняем ключ нулями до 32 байт
+	for len(k) < 32 {
+		k = append(k, 0x00)
+	}
+
+	// Расшифровываем блоки по 8 байт
+	for i := 0; i < len(ct); i += 8 {
+		// Преобразуем текст в uint32
+		block := make([]uint32, 2)
+		for j := 0; j < 8; j += 4 {
+			block[j/4] = uint32(ct[i+j]) | uint32(ct[i+j+1])<<8 | uint32(ct[i+j+2])<<16 | uint32(ct[i+j+3])<<24
+		}
+
+		// 31 раунд шифрования (в обратном порядке)
+		for j := 30; j >= 0; j-- {
+			// Переменная t получается как результат гаммирования блока и ключа
+			var t uint32
+			if (j+5)*4<=31{
+				t = binary.BigEndian.Uint32(k[(j+4)*4:(j+5)*4]) ^ gamma(block[0], dict, j)
+			}
+			// Результаты t и блока смешиваются
+			block[1], block[0] = block[0], block[1]^f(t)
+		}
+
+		// XOR блока с первыми 32 байтами ключа
+		for j := 0; j < 2; j++ {
+			block[j] ^= binary.BigEndian.Uint32(k[j*4 : (j+1)*4])
+		}
+
+		// Добавляем расшифрованный блок к результату
+		for j := 0; j < 8; j++ {
+			pt = append(pt, GetElement(Dictionary,int(byte(block[j/4]>>(j%4*8)))%len(Dictionary)))
+		}
+	}
+	ty := keys[1].Text()
+
+	return ty
+}
+
+// Функция гаммирования
+func gamma(block uint32, dict []byte, round int) uint32 {
+	a := uint32(dict[4*round])
+	b := uint32(dict[4*round+1])
+	c := uint32(dict[4*round+2])
+	d := uint32(dict[4*round+3])
+
+	return g(a^block, b^block, c^block, d^block)
+}
+
+// Функция g
+func g(a, b, c, d uint32) uint32 {
+	a = g1(a, b, c, d)
+	b = g2(a, b, c, d)
+	c = g3(a, b, c, d)
+	d = g4(a, b, c, d)
+	a = g1(a, b, c, d)
+	b = g2(a, b, c, d)
+	c = g3(a, b, c, d)
+	d = g4(a, b, c, d)
+
+	return a | b | c | d
+}
+
+func g1(a, b, c, d uint32) uint32 {
+	return f(a^b) ^ c ^ d
+}
+
+func g2(a, b, c, d uint32) uint32 {
+	return f(c^d) ^ a ^ b
+}
+
+func g3(a, b, c, d uint32) uint32 {
+	return f(a^c) ^ b ^ d
+}
+
+func g4(a, b, c, d uint32) uint32 {
+	return f(b^d) ^ a ^ c
+}
+
+// Функция F
+func f(data uint32) uint32 {
+	x := (((data << 11) | (data >> 21)) ^ data)
+	return (((x << 20) | (x >> 12)) ^ x)
+}

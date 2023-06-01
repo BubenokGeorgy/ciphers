@@ -522,3 +522,7 @@ func RsaSignatureStartKeyHandler(cipher CipherPackage)  string {
 func ShennonKeyHandler(cipher CipherPackage)  string {
 	return ""
 }
+
+func A51KeyHandler(cipher CipherPackage)  string {
+	return ""
+}

@@ -38,7 +38,8 @@ func main() {
 			{"RSA цифровая подпись", "key.png", NewRsaSignaturePage},
 			{"RSA шифр", "key.png", NewRsaPage},
 			{"Блокнот Шеннона", "key.png", NewShennonPage},
-
+			{"A5/1", "key.png", NewA51Page},
+			{"Магма", "key.png", MagmaPage},
 		},
 	}
 

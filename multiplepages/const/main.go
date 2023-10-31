@@ -153,10 +153,14 @@ const ResultingVirtUserWriterHash = "Вычисленный виртуальны
 const EnterGamma = "Введите гамму"
 const AutoGamma = "Автоматическая гамма"
 const CurrentGamma = "Текущая гамма"
+const CurrentE = "Текущее e."
+const EnterP0 = "Задайте t0."
+const EnterC = "Задайте c."
+const EnterM = "Задайте m."
+const EnterD = "Задайте d."
 //Paths
 const PathText = "text.txt"
 const PathProverb = "proverb.txt"
-const CurrentE = "Текущее e."
 
 //Errors
 const ErrorTextInValidSym = "в тексте для шифрования содержатся недопустимые символы"
@@ -218,7 +222,12 @@ const ErrorParameterXBiggerQ = "параметр x должен быть мен�
 const ErrorParameterAXOverBig = "нужно уменьшить либо параметр а либо x"
 const ErrorParameterKBiggerQ = "параметр k должен быть меньше q"
 const ErrorParameterQNotPrime = "параметр q должен быть простым числом"
+const ErrorParameterDNotPrime = "параметр d должен быть простым числом"
 const ErrorWriteTextForSignature = "введите текст для подписи"
+const ErrorGammaKey = "введите гамму для ключа"
+const ErrorAShennonKey = "параметр а должен быть нечетным"
+const ErrorBShennonKey = "параметр b должен быть равен a – 1, и кратен p для каждого простого p, делителя m. b должен быть кратно 4, если m кратно 4"
+const ErrorCShennonKey = "параметр с должен быть взаимно прост с модулем m"
 //Fonts
 const FontSizeTen = 10
 
@@ -240,4 +249,9 @@ const RegexKeyRsaSignature = `^[0-9]+$`
 const RegexKeyRsa = `^[0-9]+$`
 const RegexTextRsa= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`
 const RegexTextShennon= `^(-?\d+(\s-?\d+)*[\r]?[\n]?)*$`
-const RegexKeyMagma = `^[а-я]+$`
+const RegexKeyMagma = `^[a-f0-9]+$`
+const RegexTextMagmaCipher = `^[a-f0-9]+$`
+const RegexKeyKuz = `^[a-f0-9]+$`
+const RegexTextKuzCipher = `^[a-f0-9]+$`
+const RegexKeyA51 = `^[а-яё]+$`
+const RegexTextA51Cipher = `^[01]+$`

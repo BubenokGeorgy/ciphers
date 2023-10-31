@@ -1,7 +1,6 @@
 package ciphers
 
 import (
-	"encoding/binary"
 	"fmt"
 	"github.com/lxn/walk"
 	. "main/const"
@@ -47,45 +46,17 @@ func AtbashDecrypt(text string, keys []*walk.TextEdit) string {
 	return result
 }
 
-func CaesarEncrypt(text string, keys []*walk.TextEdit) string {
-	userKey := keys[0].Text()
-	key, _ := strconv.Atoi(userKey)
-	key = key % len(Dictionary)
-	var num, secNum int
-	var result string
-	for _, v := range text {
-		num = IndexOf(string(v), Dictionary)
-		if num+key > len(Dictionary)-1 {
-			secNum = num + key - len(Dictionary)
-		} else if num+key < 0 {
-			secNum = len(Dictionary) + num + key
-		} else {
-			secNum = num + key
-		}
-		result += GetElement(Dictionary, secNum)
-	}
-	return result
+func CaesarEncrypt(text string, keys []*walk.TextEdit) string { //шифрование шифра Цезаря с любым ключом
+	key := GetCaesarKey(keys) //получение ключа, введённого пользователем
+	result := TransformCaesarText(key, text) //получение результирующей строки
+	return result //возвращение результирующей строки
 }
 
-func CaesarDecrypt(text string, keys []*walk.TextEdit) string {
-	userKey := keys[0].Text()
-	key, _ := strconv.Atoi(userKey)
-	key = key % len(Dictionary)
-	key *= -1
-	var num, secNum int
-	var result string
-	for _, v := range text {
-		num = IndexOf(string(v), Dictionary)
-		if num+key > len(Dictionary)-1 {
-			secNum = num + key - len(Dictionary)
-		} else if num+key < 0 {
-			secNum = len(Dictionary) + num + key
-		} else {
-			secNum = num + key
-		}
-		result += GetElement(Dictionary, secNum)
-	}
-	return result
+func CaesarDecrypt(text string, keys []*walk.TextEdit) string { //расшифрование шифра Цезаря с любым ключом
+	key := GetCaesarKey(keys) //получение ключа, введённого пользователем
+	key *= -1 //умножение ключа на -1, чтобы для расшифрования двигать строку в обратную сторону
+	result := TransformCaesarText(key, text) //получение результирующей строки
+	return result //возвращение результирующей строки
 }
 
 func PolibiusEncrypt(text string, keys []*walk.TextEdit) string {
@@ -188,7 +159,6 @@ func BelazoDecrypt(text string, keys []*walk.TextEdit) string {
 		t := IndexOf(string([]rune(key)[i]), mas[0])
 		num := IndexOf(string(v), mas[t])
 		if num == -1 {
-			fmt.Println(string(v), mas[t], text)
 		}
 		result += GetElement(mas[0], num)
 		i++
@@ -199,46 +169,40 @@ func BelazoDecrypt(text string, keys []*walk.TextEdit) string {
 	return result
 }
 
-func VigenereCipherKeyEncrypt(text string, keys []*walk.TextEdit) string {
-	key := keys[0].Text()
-	i := 0
-	var result string
-	mas := GetTrithemiusTable()
-	for _, v := range text {
-		num := IndexOf(string(v), mas[0])
-		for j := 0; ; j++ {
-			if GetElement(mas[j], 0) == string([]rune(key)[i]) {
-				result += GetElement(mas[j], num)
-				key += GetElement(mas[j], num)
-				i++
-				if i > utf8.RuneCountInString(key)-1 {
-					i = 0
-				}
-				break
+func VigenereCipherKeyEncrypt(text string, keys []*walk.TextEdit) string { //шифрование шифра Виженера с ключом-шифртекстом
+	key := keys[0].Text() //считывание ключа
+	var result string //объявляение результирующей строки
+	mas := GetTrithemiusTable() //получение таблицы Тритемия
+	for i, v := range []rune(text) { //проход по всем символам текста для шифрования
+		num := IndexOf(string(v), mas[0]) //получение индекса текущей буквы в первой строки таблицы Тритемия
+		for j := 0; ; j++ { //проход по всем строкам таблицы Тритемия
+			if GetElement(mas[j], 0) == string([]rune(key)[i]) { //проверка на то, что строка начинается с текущего символа ключа
+				newSym := GetElement(mas[j], num) //получение нового символа из текущей строки
+				result += newSym //добавление нового символа в результирующую строку
+				key += newSym //добавление нового символа в ключ, чтобы дальше шифрование шло уже по полученному символу
+				break //выход из цикла к следующему символу текста для шифрования
+
 			}
 		}
 	}
-	return result
+	return result //возвращение результирующей строки
 }
 
 func VigenereCipherKeyDecrypt(text string, keys []*walk.TextEdit) string {
-	key := keys[0].Text()
-	var result string
-	i := 0
-	mas := GetTrithemiusTable()
-	for _, v := range text {
-
-		for j := 0; ; j++ {
-			if GetElement(mas[j], 0) == string([]rune(key)[i]) {
-				num := IndexOf(string(v), mas[j])
-				result += GetElement(mas[0], num)
-				key += string(v)
-				i++
-				break
+	key := keys[0].Text() //считывание ключа
+	var result string //объявляение результирующей строки
+	mas := GetTrithemiusTable() //получение таблицы Тритемия
+	for i, v := range []rune(text) { //проход по всем символам текста для шифрования
+		for j := 0; ; j++ { //проход по всем строкам таблицы Тритемия
+			if GetElement(mas[j], 0) == string([]rune(key)[i]) { //проверка на то, что строка начинается с текущего символа ключа
+				num := IndexOf(string(v), mas[j]) //получение индекса текущей буквы в текущей строке таблицы Тритемия
+				result += GetElement(mas[0], num) //добавление символа, полученного из первой строки по найденному индексу, в результирующую строку
+				key += string(v) //добавление нового символа в ключ, чтобы дальше расшифрование шло уже по полученному символу
+				break //выход из цикла к следующему символу текста для расшифрования
 			}
 		}
 	}
-	return result
+	return result //возвращение результирующей строки
 }
 
 func VigenereEncrypt(text string, keys []*walk.TextEdit) string {
@@ -280,80 +244,53 @@ func VigenereDecrypt(text string, keys []*walk.TextEdit) string {
 	return result
 }
 
-func MatrixEncrypt(text string, keys []*walk.TextEdit) string {
-	key := keys[0].Text()
-	resultAr := []string{}
-	matrix := GetMatrix(key)
-	rand.Seed(time.Now().UnixNano())
-	if utf8.RuneCountInString(text)%len(matrix) != 0 {
-		for i := 0; i < len(matrix)-utf8.RuneCountInString(text)%len(matrix); i++ {
-			text += GetElement(Dictionary, rand.Intn(len(Dictionary)))
+func MatrixEncrypt(text string, keys []*walk.TextEdit) string { //функция шифрования Матричным шифром
+	key := keys[0].Text() //получение ключа
+	var resultAr []string //объявление результирующего массива
+	matrix := GetMatrix(key) //получение матрицы из ключа
+	matrixLen := len(matrix) //объявление переменной и запись в неё текущей длины матрицы
+	runeTextLen := utf8.RuneCountInString(text) //объявление переменной и запись в неё текущей длины текста
+	rand.Seed(time.Now().UnixNano()) //инициализирование рандомайзера текущим временем
+	if runeTextLen%matrixLen != 0 { //если длина текст на кратна длине матрицы
+		for i := 0; i < matrixLen-runeTextLen%matrixLen; i++ { //проход столько раз, сколько еще нужно символов для кратности
+			text += GetElement(Dictionary, rand.Intn(len(Dictionary))) //добавление в текст рандомного символа из словаря
 		}
 	}
-	i := 0
-	matr := [][]float64{}
-	for _, v := range text {
-		t := float64(IndexOf(string(v), Dictionary) + 1)
-		matr = append(matr, []float64{t})
-		i++
-		if i > len(matrix[0])-1 {
-			i = 0
-			for _, elem := range MultiplyMatrix(matrix, matr) {
-				resultAr = append(resultAr, strconv.Itoa(int(elem[0])))
-			}
-			matr = [][]float64{}
+	runeText := []rune(text) //объявление массива и запись в него всех символов текста
+	var matr [][]int //объявление временного массива для хранения нужного количества значений для матричного перемножения
+	for i:=0;i<len(runeText);i+=matrixLen{ //проход по всему тексту с шагом равным длине матрицы
+		for _, v := range runeText[i:i+matrixLen]{ //проход для считывания новых символов количеством равных длине матрицы
+													//и записью их индексов в временный массив
+			t := IndexOf(string(v), Dictionary) + 1 //объявление переменной и запись в неё индекса текущего символа
+			matr = append(matr, []int{t}) //добавление вышеуказанного индекса в временный массив
 		}
+		for _, elem := range MultiplyMatrix(matrix, matr) { //проход по значениям, полученным после
+															// перемножения матриц - ключа и временной матрицы
+			resultAr = append(resultAr, strconv.Itoa(elem[0])) //добавление в результирующий массив текстового представления
+																//одного из полученных выше значений
+		}
+		matr = [][]int{} //обнуление временного массива
 	}
-	return strings.Join(resultAr, " ")
+	return strings.Join(resultAr, " ") //возвращение результирующей строки со значениями результируюшего массива, соединенными " "
 }
 
-func MatrixDecrypt(text string, keys []*walk.TextEdit) string {
-	key := keys[0].Text()
-	var result string
-	rand.Seed(time.Now().UnixNano())
-	matrix := GetMatrix(key)
-	inMatrix := InverseMatrix(matrix)
-	matr := [][]float64{}
-	masText := strings.Split(text, " ")
-	textStartLen := len(strings.Split(text, " "))
-	manyElems := textStartLen % len(matrix)
-	enText := ""
-	var i int
-	var tempMat []float64
-	if manyElems != 0 {
-		testMat := append(tempMat, float64(i))
-		testMatLen := len(testMat)
-		for j := 0; j < len(matrix)-testMatLen; j++ {
-			testMat = append(testMat, 0)
-		}
-		var rowTestMatr [][]float64
-		for h := 0; h < len(testMat); h++ {
-			rowTestMatr = append(rowTestMatr, []float64{0})
-			rowTestMatr[h][0] = testMat[h]
-		}
-
-		newMultMatr := MultiplyMatrix(inMatrix, rowTestMatr)
-		for _, elem := range newMultMatr {
-			if elem[0] != 0 {
-				enText += GetElement(Dictionary, int(elem[0]-1))
-			} else {
-				enText += GetElement(Dictionary, rand.Intn(len(Dictionary)))
-			}
-		}
-		masText = masText[:len(masText)-1]
-		text = strings.Join(masText, " ") + " " + MatrixEncrypt(enText, keys)
-	}
-	i = 0
+func MatrixDecrypt(text string, keys []*walk.TextEdit) string { //функция расшифрования Матричным шифром
+	key := keys[0].Text() //получение ключа
+	var result string //объявление результирующей строки
+	matrix := GetMatrix(key) //получение матрицы из ключа
+	inMatrix := InverseMatrix(matrix) //получение обратной матрицы относительно матрицы из ключа
+	var matr [][]int ////объявление временного массива для хранения нужного количества значений для матричного перемножения
+	i := 0
 	for _, v := range strings.Split(text, " ") {
-		t, _ := strconv.ParseFloat(v, 64)
-		matr = append(matr, []float64{t})
+		t, _ := strconv.Atoi(v)
+		matr = append(matr, []int{t})
 		i++
 		if i > len(inMatrix[0])-1 {
 			i = 0
 			for _, elem := range MultiplyMatrix(inMatrix, matr) {
-				result += GetElement(Dictionary, int(elem[0])-1)
+				result += GetElement(Dictionary, elem[0]-1)
 			}
-			matr = [][]float64{}
+			matr = [][]int{}
 		}
 	}
 	return result
@@ -606,38 +543,37 @@ func CardanGrilleDecrypt(text string, keys []*walk.TextEdit) string {
 	return result
 }
 
-func DiffieHellmanEncryptStart(text string, keys []*walk.TextEdit) string {
-	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(300) + 3
-	a := rand.Intn(n-2) + 2
-	sV := rand.Intn(n-2) + 2
-	sO := rand.Intn(n-2) + 2
-	keys[0].SetText(strconv.Itoa(n))
-	keys[1].SetText(strconv.Itoa(a))
-	keys[2].SetText(strconv.Itoa(sV))
-	keys[3].SetText(strconv.Itoa(sO))
-	return DiffieHellmanEncrypt(text, keys)
+func DiffieHellmanEncryptStart(text string, keys []*walk.TextEdit) string { //функция генерации значений для обмена ключами по Диффи-Хеллману
+	rand.Seed(time.Now().UnixNano()) //устанавливаем рандомайзер по текущему времени
+	n := rand.Intn(298) + 3 //подбираем рандомно число n, от 3 до 300. от 3, чтобы удовлетворяло равенству (1< a < n)
+	a := rand.Intn(n-2) + 2 //подбираем рандомно число a от 2 до n не включительно, чтобы удовлетворяло (1< a < n)
+	sV := rand.Intn(n-2) + 2 //подбираем рандомно секретный ключ одному пользователю от 2 до n не включительно, чтобы удовлетворяло [2, n-1]
+	sO := rand.Intn(n-2) + 2 //подбираем рандомно секретный ключ другому пользователю от 2 до n не включительно, чтобы удовлетворяло [2, n-1]
+	keys[0].SetText(strconv.Itoa(n)) //выводим на экран значение n
+	keys[1].SetText(strconv.Itoa(a)) //выводим на экран значение a
+	keys[2].SetText(strconv.Itoa(sV)) //выводим на экран значение секретного ключа первого пользователя
+	keys[3].SetText(strconv.Itoa(sO)) //выводим на экран значение секретного ключа второго пользователя
+	return DiffieHellmanEncrypt(text, keys) //вызываем непосредственно функцию обмена ключа по Диффи-Хеллману
 }
 
-func DiffieHellmanEncrypt(text string, keys []*walk.TextEdit) string {
-	n := new(big.Int)
-	n.SetString(keys[0].Text(), 10)
-
-	a := new(big.Int)
-	a.SetString(keys[1].Text(), 10)
-
-	sV := new(big.Int)
-	sV.SetString(keys[2].Text(), 10)
-
-	sO := new(big.Int)
-	sO.SetString(keys[3].Text(), 10)
-
-	sVOpen := new(big.Int).Exp(a, sV, n)
-	sOOpen := new(big.Int).Exp(a, sO, n)
-	keySO := new(big.Int).Exp(sVOpen, sO, n)
-	keySV := new(big.Int).Exp(sOOpen, sV, n)
-
-	return keySO.String() + Splitter + keySV.String()
+func DiffieHellmanEncrypt(text string, keys []*walk.TextEdit) string { //функция обмена ключами по Диффи-Хеллману
+	n, _ := new(big.Int).SetString(keys[0].Text(), 10) //считываем введенное n, удовлетворяющее равенству (1< a < n)
+	a, _ := new(big.Int).SetString(keys[1].Text(), 10) //считываем введеное a от 2 до n не включительно, чтобы удовлетворяло (1< a < n)
+	sV, _ := new(big.Int).SetString(keys[2].Text(), 10) //считываем секретный ключ одного пользователя от 2 до n не включительно, чтобы удовлетворял [2, n-1]
+	sO, _ := new(big.Int).SetString(keys[3].Text(), 10) //считываем секретный ключ другого пользователя от 2 до n не включительно, чтобы удовлетворял [2, n-1]
+	sVOpen := new(big.Int).Exp(a, sV, nil)//возводим a в степень секретного ключа первого пользователя
+	sVOpen =  sVOpen.Mod(sVOpen,n) //делаем mod возведенного выше числа на n, получая открытый ключ первого пользователя
+	sOOpen := new(big.Int).Exp(a, sO, nil) //возводим a в степень секретного ключа второго пользователя
+	sOOpen =  sOOpen.Mod(sOOpen,n) //делаем mod возведенного выше числа на n, получая открытый ключ второго пользователя
+	keySO := new(big.Int).Exp(sVOpen, sO, nil) //возводим открытый ключ первого пользователя в степень секретного ключа второго пользователя
+	keySO =  keySO.Mod(keySO,n) //делаем mod возведенного выше числа на n, получая общий секретный ключ
+	keySV := new(big.Int).Exp(sOOpen, sV, nil) //возводим открытый ключ второго пользователя в степень секретного ключа первого пользователя
+	keySV =  keySV.Mod(keySV,n) //делаем mod возведенного выше числа на n, получая общий секретный ключ
+	error := "Секретные ключи не могут быть равны 0 или 1, введите другие открытые ключи" //ошибка, которую будем выводить
+	if keySO.Int64()*1<2||keySV.Int64()*1<2{ //если секретные итоговые ключи равны 0 или 1, то
+		return error+Splitter+error //возвращаем ошибку
+	}
+	return keySO.String() + Splitter + keySV.String() //возвращаем получившееся общие секретные ключи
 }
 
 func GOSTR341094EncryptStart(text string, keys []*walk.TextEdit) string {
@@ -675,18 +611,32 @@ func GOSTR341094Encrypt(text string, keys []*walk.TextEdit) string {
 	k, _ := new(big.Int).SetString(keys[4].Text(), 10)
 
 	hash := GetHash(text, p)
-	if hash.Mod(hash, q).Cmp(big.NewInt(0)) == 0 {
-		hash.SetInt64(1)
+	fmt.Println("hash", hash)
+	if hash.Mod(hash, q).Cmp(big.NewInt(0)) == 0 { //если хэш mod q равно 0
+		hash.Add(hash,big.NewInt(1)) //то добавляем к значению хэша 1
 	}
 
-	y := new(big.Int).Exp(a, x, p)
-	r := new(big.Int).Exp(a, k, p)
+
+
+	y := new(big.Int).Exp(a, x, nil)
+	y = y.Mod(y,p)
+	r := new(big.Int).Exp(a, k, nil)
+	r = r.Mod(r,p)
 	r.Mod(r, q)
+
+	error := "Введите другое k, так как r и s не должны быть равны 0" //сообщение об ошибке
+	if r.Int64()==0{ //если r равно 0
+		return error+Splitter+error //то возвращаем ошибку
+	}
 
 	s1 := new(big.Int).Mul(x, r)
 	s2 := new(big.Int).Mul(k, hash)
 	s := new(big.Int).Add(s1, s2)
 	s.Mod(s, q)
+
+	if s.Int64()==0{ //если s равно 0
+		return error+Splitter+error //то возвращаем ошибку
+	}
 
 	v := new(big.Int).ModInverse(hash, q)
 
@@ -696,365 +646,408 @@ func GOSTR341094Encrypt(text string, keys []*walk.TextEdit) string {
 	z2.Mul(z2, v)
 	z2.Mod(z2, q)
 
-	u1 := new(big.Int).Exp(a, z1, p)
-	u2 := new(big.Int).Exp(y, z2, p)
+	u1 := new(big.Int).Exp(a, z1, nil)
+	u1 = u1.Mod(u1,p)
+	u2 := new(big.Int).Exp(y, z2, nil)
+	u2 = u2.Mod(u2,p)
 	u := new(big.Int).Mul(u1, u2)
 	u.Mod(u, p)
 	u.Mod(u, q)
-
-	return r.String() + Splitter + u.String()
+	str1 := "r = "+r.String()+" s = "+s.String()
+	str2 := "r = "+r.String()+" u = "+u.String()
+	return str1+Splitter+str2
 }
 
-func RsaSignatureEncryptStart(text string, keys []*walk.TextEdit) string {
-	p := GeneratePrimeNumber()
-	q := GeneratePrimeNumber()
-	keys[0].SetText(strconv.Itoa(p))
-	keys[1].SetText(strconv.Itoa(q))
-	return RsaSignatureEncrypt(text, keys)
+func RsaSignatureEncryptStart(text string, keys []*walk.TextEdit) string {//функция, которая нужна для генерации параметров p и q, очень больших простых чисел, не равных между собой, для алгоритма цифровой подписи Rsa
+	RsaSetPQ(keys) //Вызываем функцию генерации и установки параметров p и q, очень больших простых чисел, не равных между собой
+	return RsaSignatureEncrypt(text, keys) //вызываем непосредственно функцию генерации цифровой подписи
 }
 
 func RsaSignatureEncrypt(text string, keys []*walk.TextEdit) string {
-	rand.Seed(time.Now().UnixNano())
-	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
-	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
-	n := new(big.Int).Mul(p, q)
-	f := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
-	var temp []int64
-	for i := 2; i < int(f.Int64()); i++ {
-		if Gcd(i, int(f.Int64())) == 1 {
-			temp = append(temp, int64(i))
+	rand.Seed(time.Now().UnixNano()) //инициализируем рандомайзер от текущего времени
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10) //считываем p - введённое очень большое просто десятичное число
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10) //считываем q - введённое очень большое простое десятичное число, отличное от p
+	e, _ := new(big.Int).SetString(keys[2].Text(), 10) //считываем e - введёное число 1<e<f(функции Эйлера), взаимно простое с f(функцией Эйлера)
+	n := new(big.Int).Mul(p, q) //получаем n, как результат перемножения простых чисел p и q
+	num1 := big.NewInt(1) //записываем в переменную 1, чтобы потом добавлять или вычитать 1 из чисел без повторного создания переменной
+	f := new(big.Int).Mul(p.Sub(p,num1),q.Sub(q,num1)) // находим функцию Эйлера от p и q, путем перемножения (p-1) на (q-1)
+	d := new(big.Int) //инициализируем переменную d
+	for i:=big.NewInt(1);;i.Add(num1,i){ //проходимся циклом по значениям i от 1 до бесконечности, прибавляя к i по единице, чтобы подобрать d
+		//подбираем d=(1 mod f)/e, либо (e*d) mod f=1
+		j := new(big.Int) //инициализируем переменную, в которой будем подбирать d
+		j = j.Mul(i,e) //находим произведение текущего i и подобранного e
+		j = j.Mod(j,f) //находим mod произведения выше на f(функцию Эйлера)
+		if j.Cmp(num1)==0{ //если mod(остаток от деления) выше равен 1, то мы нашли d
+			d = i //записываем в d текущую подобранную i
+			break //выходим из цикла
 		}
 	}
-	e := temp[rand.Intn(len(temp))]
-	d := big.NewInt(1)
-	for {
-		if new(big.Int).Mod(new(big.Int).Mul(d, big.NewInt(int64(e))), f).Cmp(big.NewInt(1)) == 0 {
-			break
+	//Генерация подписи
+	hash := GetHash(text, n) //получаем хэш нашего сообщения с модулем n
+	if hash.Mod(hash, n).Cmp(big.NewInt(0)) == 0 { //если hash mod n == 0
+		hash.Add(hash,big.NewInt(1)) //то добавляем к хэшу единицу, так как хэш должен быть от (1,N)
+	}
+	oU := new(big.Int).Exp(hash, d, nil) //вовзодим получившийся хэш в степень d
+	oU = oU.Mod(oU,n) //берем mod получившегося выше возведения на n
+	//Првоерка подписи
+	m := new(big.Int).Exp(oU, e, nil) //возводим получившуюся подпись в степень e
+	m = m.Mod(m,n) //делаем mod возведенного выше числа на n
+	return hash.String() + Splitter + m.String() //возвращаем как результат - полученный hash текста и полученную при проверке подпись
+}
+
+func RsaEncryptStart(text string, keys []*walk.TextEdit) string { //функция, которая нужна для генерации параметров p и q, очень больших простых чисел, не равных между собой, для шифрования шифра Rsa
+	RsaSetPQ(keys) //Вызываем функцию генерации и установки параметров p и q, очень больших простых чисел, не равных между собой
+	return RsaEncrypt(text, keys) //вызываем непосредственно функцию шифрования Rsa
+}
+
+func RsaEncrypt(text string, keys []*walk.TextEdit) string { //функция шифрования шифра RSA из лабкрипта
+	rand.Seed(time.Now().UnixNano()) //инициализируем рандомайзер от текущего времени
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10) //считываем p - введённое очень большое просто десятичное число
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10) //считываем q - введённое очень большое простое десятичное число, отличное от p
+	e, _ := new(big.Int).SetString(keys[2].Text(), 10) //считываем e - введёное число 1<e<f(функции Эйлера), взаимно простое с f(функцией Эйлера)
+	n := new(big.Int).Mul(p, q) //получаем n, как результат перемножения простых чисел p и q
+	num1 := big.NewInt(1) //записываем в переменную 1, чтобы потом добавлять или вычитать 1 из чисел без повторного создания переменной
+	f := new(big.Int).Mul(p.Sub(p,num1),q.Sub(q,num1)) // находим функцию Эйлера от p и q, путем перемножения (p-1) на (q-1)
+	d := new(big.Int) //инициализируем переменную d
+	for i:=big.NewInt(1);;i.Add(num1,i){ //проходимся циклом по значениям i от 1 до бесконечности, прибавляя к i по единице, чтобы подобрать d
+		//подбираем d=(1 mod f)/e, либо (e*d) mod f=1
+		j := new(big.Int) //инициализируем переменную, в которой будем подбирать d
+		j = j.Mul(i,e) //находим произведение текущего i и подобранного e
+		j = j.Mod(j,f) //находим mod произведения выше на f(функцию Эйлера)
+		if j.Cmp(num1)==0{ //если mod(остаток от деления) выше равен 1, то мы нашли d
+			d = i //записываем в d текущую подобранную i
+			break //выходим из цикла
 		}
-		d.Add(d, big.NewInt(1))
 	}
-	hash := GetHash(text, n)
-	oU := new(big.Int).Exp(hash, d, n).Int64()
-	m := new(big.Int).Exp(big.NewInt(oU), big.NewInt(int64(e)), n).Int64()
-	return strconv.Itoa(int(hash.Int64())) + Splitter + strconv.Itoa(int(m))
+	var result string //инициализируем переменную, в которую будет записана результирующая строка
+	var mas []string //инициализируем переменную, в которой будет хранится массив с данными, которые будут потом записаны в результ
+	for _, v := range text { //проходимся посимвольно по тексу для шифрования
+		h := IndexOf(string(v), Dictionary)+1 //получаем индекс текущей буквы из текста в нашем словаре
+		oU := new(big.Int).Exp(big.NewInt(int64(h)), d, nil) //возводим этот индекс в степень d
+		oU = oU.Mod(oU,n) //получаем mod от результата возведения на n
+		mas = append(mas, oU.String()) //записываем получившееся значение в результирующий массив
+	}
+	result = strings.Join(mas, " ") //склеиваем результируюущую строку из результирующего массива
+	return result //возвращаем результируюущую(зашифрованную строку)
 }
 
-func RsaEncryptStart(text string, keys []*walk.TextEdit) string {
 
-	p := GeneratePrimeNumber()
-	q := GeneratePrimeNumber()
-	keys[0].SetText(strconv.Itoa(p))
-	keys[1].SetText(strconv.Itoa(q))
-	return RsaEncrypt(text, keys)
+func RsaDecryptStart(text string, keys []*walk.TextEdit) string { //функция, которая нужна для генерации параметров p и q, очень больших простых чисел, не равных между собой, для расшифрования шифра Rsa
+	if len(keys[0].Text())*len(keys[1].Text())*len(keys[2].Text())==0{ //если p или q или e не указано, что значит, что ключи не были введены
+		RsaSetPQ(keys) //вызываем функцию генерации и установки параметров p и q, очень больших простых чисел, не равных между собой
+	}
+	return RsaDecrypt(text, keys) //вызываем непосредственно функцию для расшифрования Rsa
 }
 
-func RsaEncrypt(text string, keys []*walk.TextEdit) string {
-	rand.Seed(time.Now().UnixNano())
-	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
-	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
-	n := new(big.Int).Mul(p, q)
-	f := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
-	var temp []int64
-	for i := 2; i < int(f.Int64()); i++ {
-		if Gcd(i, int(f.Int64())) == 1 {
-			temp = append(temp, int64(i))
+func RsaDecrypt(text string, keys []*walk.TextEdit) string { ////функция расшифрования шифра RSA из лабкрипта
+	mas := strings.Split(text, " ") //строку переводим в массив, делая её по пробелу, таким образом записываем зашифрованные значения в массив
+	p, _ := new(big.Int).SetString(keys[0].Text(), 10) //считываем p - введённое очень большое просто десятичное число
+	q, _ := new(big.Int).SetString(keys[1].Text(), 10) //считываем q - введённое очень большое простое десятичное число, отличное от p
+	n := new(big.Int).Mul(p, q) //получаем n, как результат перемножения простых чисел p и q
+	e , _:= new(big.Int).SetString(keys[2].Text(), 10) //считываем число 1<e<f(функции Эйлера), взаимного просто с f(функцией Эйлера)
+	var result string //инициализируем перменную с результирующей строкой
+	for _, v := range mas{ //проходим по массиву с зашифрованными значенияеми
+		num,_ := new(big.Int).SetString(v,10) //считываем текущее значение
+		m := new(big.Int).Exp(num, e, nil) //возводим это значение в степень числа e
+		m = new(big.Int).Mod(m,n) //делаем mod результата возведения на n
+		result+=GetElement(Dictionary, int(m.Int64())-1) //получившееся число считаем индексом символа из нашего алфавита
+														//и записываем нужный символ в результирующую строку
+	}
+	return result //возвращаем результирующую строку
+}
+
+func ShennonEncryptStart(text string,keys []*walk.TextEdit ) string { //функция, которая подбирает значения для шифрования Блокнота Шеннона
+	ShennonParametrsSet(keys)       //вызываем функцию подбора параметров для Блокнота Шеннона
+	return ShennonCipher(text,keys) //вызываем непосредственно функцию шифрования Блокнота Шеннона
+}
+
+func ShennonDecryptStart(text string,keys []*walk.TextEdit ) string {//функция, которая подбирает значения для расшифрования Блокнота Шеннона
+	if len(keys[0].Text())*len(keys[1].Text())*
+		len(keys[2].Text())*len(keys[3].Text())*len(keys[4].Text())==0 { //если один из нужных параметров не указан, то
+		ShennonParametrsSet(keys) //вызываем функцию подбора параметров для Блокнота Шеннона
+	}
+	return ShennonCipher(text, keys) ////вызываем непосредственно функцию расшифрования Блокнота Шеннона
+}
+
+
+func ShennonCipher(text string,keys []*walk.TextEdit ) string { //фукнция шифрования Блокнота Шеннона
+
+	if len(keys[0].Text())==0{
+		a,_ := strconv.Atoi(keys[1].Text())
+		t0,_ := strconv.Atoi(keys[2].Text())
+		c,_ := strconv.Atoi(keys[3].Text())
+		m,_ := strconv.Atoi(keys[4].Text())
+		mas := GenerateShennonGamma(a,t0,c,m) //генерируем гамму для блокнота Шеннона из полученных параметров
+		var strMas []string //инициализиурем переменную, в которую будут записываться строковые представления
+		//чисел из гаммы
+		for _, elem := range mas{ //роходимся по массиву гаммы
+			strMas = append(strMas,strconv.Itoa(elem)) //записываем в строковый массив строковое представление
+			//чисел из массива гаммы
 		}
+		keys[0].SetText(strings.Join(strMas," ")) //записываем в поле параметра гаммы полученную гамму
 	}
-	e := temp[rand.Intn(len(temp))]
-	keys[3].SetText(strconv.Itoa(int(e)))
-	d := big.NewInt(1)
-	for {
-		if new(big.Int).Mod(new(big.Int).Mul(d, big.NewInt(int64(e))), f).Cmp(big.NewInt(1)) == 0 {
-			break
-		}
-		d.Add(d, big.NewInt(1))
+	m,_ := strconv.Atoi(keys[4].Text()) //считываем значение m, которое равно размеру алфавита
+	var mas []int //инициализируем переменную массива с числовыми представлениями гаммы
+	for _, elem := range strings.Split(keys[0].Text()," "){ //проходимя по строковым представлениям гаммы
+		num,_ := strconv.Atoi(elem) //конвертируем строковые представления гаммы в числовые
+		mas = append(mas, num) //добавляем числовые представления в массив
 	}
-	var result string
-	var mas []string
-	for _, v := range text {
-		h := IndexOf(string(v), Dictionary)
-		oU := new(big.Int).Exp(big.NewInt(int64(h)), d, n).Int64()
-		mas = append(mas, strconv.Itoa(int(oU)))
-	}
-	result = strings.Join(mas, " ")
-	return result
-}
+	encrypted := "" //инициализируем переменную для хранения зашифрованного текста
+	var j int //инициаилизируем счетчик, который помогает проходиться по всей гамме параллельно
+			// с текстом для шифрования
+	var t []int
+	for _, v:= range text { //проходимся по тексту для шифрования
 
-
-func RsaDecryptStart(text string, keys []*walk.TextEdit) string {
-	p := GeneratePrimeNumber()
-	q := GeneratePrimeNumber()
-	if len(keys[0].Text())==0 {
-		keys[0].SetText(strconv.Itoa(p))
-		keys[1].SetText(strconv.Itoa(q))
+		ci := IndexOf(string(v),Dictionary)^(mas[j%m]) //индекс текущей буквы в нашем словаре возводим
+		t = append(t, ci)												// в степень соответствующего числа из гаммы.
+														// используем mod, чтобы гамма шла по кругу
+		encrypted += GetElement(Dictionary, ci) //записываем в строку с шифрованным текстом символ из
+												//нашего словаря, чей индекс равен полученному выше числу
+		j++ //увеличиваем счетчик
 	}
-	return RsaDecrypt(text, keys)
-}
-
-func RsaDecrypt(text string, keys []*walk.TextEdit) string {
-	mas := strings.Split(text, " ")
-	p, _ := new(big.Int).SetString(keys[0].Text(), 10)
-	q, _ := new(big.Int).SetString(keys[1].Text(), 10)
-	n := new(big.Int).Mul(p, q)
-	e , _:= new(big.Int).SetString(keys[3].Text(), 10)
-	var result string
-	for _, v := range mas{
-		num,_ := strconv.Atoi(v)
-		m := new(big.Int).Exp(big.NewInt(int64(num)), e, n).Int64()
-		result+=GetElement(Dictionary, int(m))
-	}
-	return result
-}
-
-func ShennonEncrypt(text string,keys []*walk.TextEdit ) string {
-	rand.Seed(time.Now().UnixNano())
-	gamma := GenerateGamma(utf8.RuneCountInString(text),rand.Intn(100)+1)
-	var gammaMas []int
-	for _,v:= range strings.Split(gamma," "){
-		num, _ := strconv.Atoi(v)
-		gammaMas = append(gammaMas, num)
-	}
-	fmt.Println(gamma)
-	keys[0].SetText(gamma)
-	encrypted := ""
-	i:=0
-	for _, v:= range text {
-		ci := IndexOf(string(v),Dictionary)^gammaMas[i]
-		encrypted += GetElement(Dictionary, ci)
-		i++
-	}
-	fmt.Println(encrypted)
-	return encrypted
-}
-
-func ShennonDecrypt(text string, keys []*walk.TextEdit) string {
-	decrypted := ""
-	gamma := keys[0].Text()
-	if len(gamma)==0{
-		gamma = GenerateGamma(utf8.RuneCountInString(text),rand.Int())
-		keys[0].SetText(gamma)
-	}
-	var gammaMas []int
-	for _,v:= range strings.Split(gamma," "){
-		num, _ := strconv.Atoi(v)
-		gammaMas = append(gammaMas, num)
-	}
-	var textMas []int
-	for _, v := range text{
-		textMas = append(textMas, IndexOf(string(v), Dictionary))
-	}
-	i := 0
-	for _,v := range textMas{
-		ci := v^gammaMas[i]
-		decrypted += GetElement(Dictionary,ci)
-		i++
-	}
-	return decrypted
+	fmt.Println(len(t),t)
+	return encrypted //возвращаем зашифрованный текст
 }
 
 func A51Encrypt(text string,keys []*walk.TextEdit ) string {
-	rand.Seed(time.Now().UnixNano())
-	gamma := GenerateA51Gamma(GenerateKey(),GenerateFrameNumber(), utf8.RuneCountInString(text))
-	var gammaMas []int
-	for _,v:= range strings.Split(gamma," "){
-		num, _ := strconv.Atoi(v)
-		gammaMas = append(gammaMas, num)
+	a51key := keys[0].Text()
+	if strings.Join(RemoveDuplicates(strings.Split(a51key, "")), "") == "А" {
+		return "Invalid key"
 	}
-	fmt.Println(gamma)
-	keys[0].SetText(gamma)
-	encrypted := ""
-	i:=0
-	for _, v:= range text {
-		if i < len(gammaMas) {
-			ci := IndexOf(string(v), Dictionary) ^ gammaMas[i]
-			encrypted += GetElement(Dictionary, ci)
-			i++
+	a51key = TransformKey(a51key,64)
+	var keyBits string
+	for _, keyChar := range a51key {
+		keyBits += KeyToBits(string(keyChar))
+	}
+	var bitStockText string
+	for _, textChar := range text {
+		bitStockText += KeyToBits(string(textChar))
+	}
+	bitStockTextArray := ChunkString(bitStockText, 114)
+	var result string
+
+	for j, bitStockTextChunk := range bitStockTextArray {
+		var registr1 = make([]int, 19)
+		var registr2 = make([]int, 22)
+		var registr3 = make([]int, 23)
+
+		for i := 0; i < 64; i++ {
+			registr1[0] = registr1[0]^ToInt(string(keyBits[i]))
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+
+			registr2[0] = registr2[0]^ToInt(string(keyBits[i]))
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[0]^ToInt(string(keyBits[i]))
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
 		}
+		jB := new(big.Int).SetInt64(int64(j))
+		jS := FillZerosBeforeNumber(jB.Text(2),22)
+		for i := 0; i < 22; i++ {
+			registr1[0] = registr1[0]^ToInt(string(jS[i]))
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+
+			registr2[0] = registr2[0]^ToInt(string(jS[i]))
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[0]^ToInt(string(jS[i]))
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+		}
+		for i := 0; i < 100; i++ {
+			F := (registr1[8]&registr2[10])^(registr1[8]&registr3[10])^(registr2[10]&registr3[10])
+			if registr1[8] == F {
+				registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+			}
+			if registr2[10] == F {
+				registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+			}
+			if registr3[10] == F {
+				registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+			}
+		}
+		var tempResult string
+		var tempKey string
+		for _, bit := range bitStockTextChunk {
+
+			tempResult += strconv.Itoa((ToInt(string(bit))^(registr1[18]^registr2[21]^registr3[22]))%2)
+			tempKey+=strconv.Itoa(registr1[18]^registr2[21]^registr3[22])
+			registr1[0] = registr1[18]^registr1[17]^registr1[16]^registr1[13]
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+
+			registr2[0] = registr2[21]^registr2[20]
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[22]^registr3[21]^registr3[20]^registr3[7]
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+		}
+		result += tempResult
 	}
-	return encrypted
+	return result
 }
 
-func A51Decrypt(text string, keys []*walk.TextEdit) string {
-	decrypted := ""
-	gamma := keys[0].Text()
-	if len(gamma)==0{
-		gamma := GenerateA51Gamma(GenerateKey(),GenerateFrameNumber(), utf8.RuneCountInString(text))
-		keys[0].SetText(gamma)
+func A51Decrypt(text string,keys []*walk.TextEdit ) string {
+	a51key := keys[0].Text()
+	if strings.Join(RemoveDuplicates(strings.Split(a51key, "")), "") == "А" {
+		return "Invalid key"
 	}
-	var gammaMas []int
-	for _,v:= range strings.Split(gamma," "){
-		num, _ := strconv.Atoi(v)
-		gammaMas = append(gammaMas, num)
+	a51key = TransformKey(a51key,64)
+	var keyBits string
+	for _, keyChar := range a51key {
+		keyBits += KeyToBits(string(keyChar))
 	}
-	var textMas []int
-	for _, v := range text{
-		textMas = append(textMas, IndexOf(string(v), Dictionary))
+	bitStockTextArray := ChunkString(text, 114)
+	var result string
+
+	for j, bitStockTextChunk := range bitStockTextArray {
+		var registr1 = make([]int, 19)
+		var registr2 = make([]int, 22)
+		var registr3 = make([]int, 23)
+
+		for i := 0; i < 64; i++ {
+			registr1[0] = registr1[0]^ToInt(string(keyBits[i]))
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+
+			registr2[0] = registr2[0]^ToInt(string(keyBits[i]))
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[0]^ToInt(string(keyBits[i]))
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+		}
+		jB := new(big.Int).SetInt64(int64(j))
+		jS := FillZerosBeforeNumber(jB.Text(2),22)
+		for i := 0; i < 22; i++ {
+			registr1[0] = registr1[0]^ToInt(string(jS[i]))
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+
+			registr2[0] = registr2[0]^ToInt(string(jS[i]))
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[0]^ToInt(string(jS[i]))
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+		}
+		for i := 0; i < 100; i++ {
+			F := (registr1[8]&registr2[10])^(registr1[8]&registr3[10])^(registr2[10]&registr3[10])
+			if registr1[8] == F {
+				registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...)
+			}
+			if registr2[10] == F {
+				registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+			}
+			if registr3[10] == F {
+				registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+			}
+		}
+		var tempResult string
+		for _, bit := range bitStockTextChunk { //проход по 114 битам текста
+			tempResult += strconv.Itoa(ToInt(string(bit))^(registr1[18]^registr2[21]^registr3[22])) //xor между текущим битом текста и 18 битом первого регистра, 21 битом второго регистра,
+																											//22 битом третьего регистра
+			registr1[0] = registr1[18]^registr1[17]^registr1[16]^registr1[13] //записываем в нулевой бит первого регистра xor между 18 битом первого регистра, 17 битом первого регистра,
+																				//16 битом первого регистра, 14 битом первого регистра
+			registr1 = append([]int{registr1[len(registr1)-1]}, registr1[:len(registr1)-1]...) //сдвигаем первый регистр на 1 бит вправо
+
+			registr2[0] = registr2[21]^registr2[20]
+			registr2 = append([]int{registr2[len(registr2)-1]}, registr2[:len(registr2)-1]...)
+
+			registr3[0] = registr3[22]^registr3[21]^registr3[20]^registr3[7]
+			registr3 = append([]int{registr3[len(registr3)-1]}, registr3[:len(registr3)-1]...)
+		}
+		result += tempResult
 	}
-	i := 0
-	for _,v := range textMas{
-		ci := v^gammaMas[i]
-		decrypted += GetElement(Dictionary,ci)
-		i++
+	var alphaResult string
+	tempArray := ChunkString(result, 5)
+	for _, bitChunk := range tempArray {
+		alphaIndex,_ := strconv.ParseInt(bitChunk,2,0)
+		alphaResult += GetElement(Dictionary, int(alphaIndex))
 	}
-	return decrypted
-	return ""
+
+	return alphaResult
 }
 
-var dict = []byte{
-	0x32, 0x88, 0x4d, 0x41, 0x2b, 0x29, 0x4a, 0x24,
-	0x14, 0x1e, 0xb, 0x7, 0x8e, 0x86, 0x3a, 0x17,
-	0x8, 0x92, 0x1a, 0x3c, 0x6d, 0x46, 0x5d, 0x9d,
-	0x1d, 0x3, 0x61, 0x69, 0xf, 0x7d, 0x27, 0x6f,
-	0xa, 0x47, 0xf0, 0xf1, 0x2, 0xc, 0xff, 0xee,
-	0x49, 0x44, 0xb8, 0x21, 0x19, 0x9, 0xbe, 0xd8,
-	0x7c, 0x6, 0xe, 0x74, 0x31, 0x15, 0x1f, 0xc9,
-	0x87, 0xaa, 0xba, 0x3e, 0x96, 0x5c, 0x83, 0x4b,
+func MagmaEncryptStart(text string, keys []*walk.TextEdit) string {
+	cipherText := TextToHex(text)
+	return MagmaEncrypt(cipherText,keys)
 }
 
-// Функция шифрования шифром магма
 func MagmaEncrypt(text string,  keys []*walk.TextEdit) string {
-	var ct []string
-	keys[1].SetText(text)
-	key := keys[0].Text()
-	// Приводим текст и ключ к байтам
-	pt := []byte(text)
-	k := []byte(key)
-
-	// Дополняем ключ нулями до 32 байт
-	for len(k) < 32 {
-		k = append(k, 0x00)
+	newKey := CutKey(keys[0].Text())
+	textEncrypt := ""
+	textArray := FormatTextGetParts(text,64)
+	for _, textPart := range textArray {
+		textEncrypt += ChainOfTransformations(textPart[:32], textPart[32:], newKey, "straight")
+	}
+	cipherHexStr := ""
+	t := new(big.Int)
+	for i:=0;i*4+4<=len(textEncrypt);i++{
+		t.SetString(textEncrypt[i*4:i*4+4],2)
+		cipherHexStr+=t.Text(16)
 	}
 
-	// Дополняем текст нулями до кратности 8
-	for len(pt)%8 != 0 {
-		pt = append(pt, 0x00)
+	return cipherHexStr
+}
+
+
+func MagmaDecryptStart(text string, keys []*walk.TextEdit) string {
+	decryptText := MagmaDecrypt(text, keys)
+	return HexToText(decryptText)
+}
+
+func MagmaDecrypt(text string, keys []*walk.TextEdit) string {
+	newKey := CutKey(keys[0].Text())
+	textDecrypt := ""
+	textArray := FormatTextGetParts(text,64)
+	for _, textPart := range textArray {
+		textDecrypt += ChainOfTransformations(textPart[:32], textPart[32:], newKey, "reverse")
+	}
+	cipherHexStr := ""
+	t := new(big.Int)
+	for i:=0;i*4+4<=len(textDecrypt);i++{
+		t.SetString(textDecrypt[i*4:i*4+4],2)
+		cipherHexStr+=t.Text(16)
+	}
+	return cipherHexStr
+}
+
+func KuzEncryptStart(text string, keys []*walk.TextEdit) string {
+	cipherText := TextToHex(text)
+	return KuzEncrypt(cipherText,keys)
+}
+
+func KuzDecryptStart(text string, keys []*walk.TextEdit) string {
+	decryptText := KuzDecrypt(text,keys)
+	return HexToText(decryptText)
+}
+
+func KuzEncrypt(text string, keys []*walk.TextEdit) string {
+	textEncrypt := ""
+	key := TransformKey(keys[0].Text(),64)
+	k,_ := new(big.Int).SetString(key,16)
+	keysKuz := KuznyechikKeySchedule(k)
+	textArray := FormatTextGetParts(text,128)
+	for _, textPart := range textArray {
+		t,_ := new(big.Int).SetString(textPart,2)
+		for round := 0; round < 9; round++ {
+			res := new(big.Int).Xor(t,keysKuz[round])
+			t = L(S(res))
+		}
+		textEncrypt += FillZerosBeforeNumber(new(big.Int).Xor(t, keysKuz[9]).Text(16),32)
 	}
 
-	// Шифруем блоки по 8 байт
-	for i := 0; i < len(pt); i += 8 {
-		// Преобразуем текст в uint32
-		block := make([]uint32, 2)
-		for j := 0; j < 8; j += 4 {
-			block[j/4] = uint32(pt[i+j]) | uint32(pt[i+j+1])<<8 | uint32(pt[i+j+2])<<16 | uint32(pt[i+j+3])<<24
+	return textEncrypt
+}
+
+func KuzDecrypt(text string, keys []*walk.TextEdit) string {
+	textDecrypt := ""
+	key := TransformKey(keys[0].Text(),64)
+	k,_ := new(big.Int).SetString(key,16)
+	keysKuz := KuznyechikKeySchedule(k)
+	textArray := FormatTextGetParts(text,128)
+	for _, textPart := range textArray {
+		t,_ := new(big.Int).SetString(textPart,2)
+		for round := 0; round < 9; round++ {
+			t = SInv(LInv(new(big.Int).Xor(t, keysKuz[9-round])))
 		}
-
-		// XOR блока с первыми 32 байтами ключа
-		for j := 0; j < 2; j++ {
-			block[j] ^= binary.BigEndian.Uint32(k[j*4 : (j+1)*4])
-		}
-
-		// 31 раунд шифрования
-		for j := 0; j < 31; j++ {
-			// Переменная t получается как результат гаммирования блока и ключа
-			var t uint32
-			if (j+5)*4<=31{
-				t = binary.BigEndian.Uint32(k[(j+4)*4:(j+5)*4]) ^ gamma(block[1], dict, j)
-			}
-			// Результаты t и блока смешиваются
-			block[0], block[1] = block[1], block[0]^f(t)
-
-		}
-
-
-		// Добавляем зашифрованный блок к результату
-		for j := 0; j < 8; j++ {
-			ct = append(ct, GetElement(Dictionary,int(byte(block[j/4]>>(j%4*8)))%len(Dictionary)))
-		}
+		textDecrypt += FillZerosBeforeNumber(new(big.Int).Xor(t, keysKuz[0]).Text(16),32)
 	}
-
-	// Возвращаем результат в виде строки
-	return strings.Join(ct,"")
+	return textDecrypt
 }
 
-// Функция расшифрования шифром магма
-func MagmaDecrypt(ciphertext string, keys []*walk.TextEdit) string {
-	var pt []string
-	key := keys[0].Text()
-	// Приводим текст и ключ к байтам
-	ct := []byte(ciphertext)
-	k := []byte(key)
-
-	// Дополняем ключ нулями до 32 байт
-	for len(k) < 32 {
-		k = append(k, 0x00)
-	}
-
-	// Расшифровываем блоки по 8 байт
-	for i := 0; i < len(ct); i += 8 {
-		// Преобразуем текст в uint32
-		block := make([]uint32, 2)
-		for j := 0; j < 8; j += 4 {
-			block[j/4] = uint32(ct[i+j]) | uint32(ct[i+j+1])<<8 | uint32(ct[i+j+2])<<16 | uint32(ct[i+j+3])<<24
-		}
-
-		// 31 раунд шифрования (в обратном порядке)
-		for j := 30; j >= 0; j-- {
-			// Переменная t получается как результат гаммирования блока и ключа
-			var t uint32
-			if (j+5)*4<=31{
-				t = binary.BigEndian.Uint32(k[(j+4)*4:(j+5)*4]) ^ gamma(block[0], dict, j)
-			}
-			// Результаты t и блока смешиваются
-			block[1], block[0] = block[0], block[1]^f(t)
-		}
-
-		// XOR блока с первыми 32 байтами ключа
-		for j := 0; j < 2; j++ {
-			block[j] ^= binary.BigEndian.Uint32(k[j*4 : (j+1)*4])
-		}
-
-		// Добавляем расшифрованный блок к результату
-		for j := 0; j < 8; j++ {
-			pt = append(pt, GetElement(Dictionary,int(byte(block[j/4]>>(j%4*8)))%len(Dictionary)))
-		}
-	}
-	ty := keys[1].Text()
-
-	return ty
-}
-
-// Функция гаммирования
-func gamma(block uint32, dict []byte, round int) uint32 {
-	a := uint32(dict[4*round])
-	b := uint32(dict[4*round+1])
-	c := uint32(dict[4*round+2])
-	d := uint32(dict[4*round+3])
-
-	return g(a^block, b^block, c^block, d^block)
-}
-
-// Функция g
-func g(a, b, c, d uint32) uint32 {
-	a = g1(a, b, c, d)
-	b = g2(a, b, c, d)
-	c = g3(a, b, c, d)
-	d = g4(a, b, c, d)
-	a = g1(a, b, c, d)
-	b = g2(a, b, c, d)
-	c = g3(a, b, c, d)
-	d = g4(a, b, c, d)
-
-	return a | b | c | d
-}
-
-func g1(a, b, c, d uint32) uint32 {
-	return f(a^b) ^ c ^ d
-}
-
-func g2(a, b, c, d uint32) uint32 {
-	return f(c^d) ^ a ^ b
-}
-
-func g3(a, b, c, d uint32) uint32 {
-	return f(a^c) ^ b ^ d
-}
-
-func g4(a, b, c, d uint32) uint32 {
-	return f(b^d) ^ a ^ c
-}
-
-// Функция F
-func f(data uint32) uint32 {
-	x := (((data << 11) | (data >> 21)) ^ data)
-	return (((x << 20) | (x >> 12)) ^ x)
-}

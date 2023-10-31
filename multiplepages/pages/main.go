@@ -517,7 +517,7 @@ func NewRsaSignaturePage(parent walk.Container) (Page, error) {
 			HeaderThirdText:      ResultingVirtUserWriterHash,
 		},
 		AutoKeys:        true,
-		Keys:            []Key{{Label: EnterP, Visible: true, Enable: true}, {Label: EnterQ, Visible: true, Enable: true}},
+		Keys:            []Key{{Label: EnterP, Visible: true, Enable: true}, {Label: EnterQ, Visible: true, Enable: true},{Label: EnterD, Visible: true, Enable: true}},
 		VariabilityText: AutoKeys,
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
@@ -561,7 +561,7 @@ func NewRsaPage(parent walk.Container) (Page, error) {
 		FontSize:        FontSizeTen,
 		WindowConf:      WindowConfStandard,
 		AutoKeys:        true,
-		Keys:            []Key{{Label: EnterP, Visible: true, Enable: true}, {Label: EnterQ, Visible: true, Enable: true}, {Label: CurrentE, Visible: true, Enable: false, Const: true}},
+		Keys:            []Key{{Label: EnterP, Visible: true, Enable: true}, {Label: EnterQ, Visible: true, Enable: true}, {Label: EnterD, Visible: true, Enable: true}},
 		VariabilityText: AutoKeys,
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
@@ -626,19 +626,30 @@ func NewShennonPage(parent walk.Container) (Page, error) {
 	page := NewComposite{
 		FontSize:        FontSizeTen,
 		WindowConf:      WindowConfStandard,
-		AutoKeys:        false,
-		Keys:            []Key{{Label:CurrentGamma , Visible: true, Const: true}},
-		VariabilityVisible: false,
+		AutoKeys:        true,
+		Keys:            []Key{{Label: CurrentGamma, Visible: true, Enable: true}, {Label: EnterA, Visible: true, Enable: true}, {Label: EnterP0, Visible: true, Enable: true}, {Label: EnterC, Visible: true, Enable: true}, {Label: EnterM, Visible: true, Enable: true}},
+		VariabilityText: AutoKeys,
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
-				Cipher: ciphers.ShennonEncrypt,
-				TextErrors: TextErrors,
+				Cipher:           ciphers.ShennonCipher,
+				TextErrors:       TextErrors,
 				KeyErrorsHandler: ShennonKeyHandler,
 			},
 			Decrypt: CiphersErrors{
-				Cipher: ciphers.ShennonDecrypt,
-				TextErrors: CipherTextErrors,
+				Cipher:           ciphers.ShennonCipher,
+				TextErrors:       CipherTextErrors,
 				KeyErrorsHandler: ShennonKeyHandler,
+			},
+		}, {
+			Encrypt: CiphersErrors{
+				Cipher:           ciphers.ShennonEncryptStart,
+				TextErrors:       TextErrors,
+				KeyErrorsHandler: ShennonStartKeyHandler,
+			},
+			Decrypt: CiphersErrors{
+				Cipher:           ciphers.ShennonDecryptStart,
+				TextErrors:       CipherTextErrors,
+				KeyErrorsHandler: ShennonStartKeyHandler,
 			},
 		},
 		},
@@ -655,23 +666,27 @@ func NewShennonPage(parent walk.Container) (Page, error) {
 }
 func NewA51Page(parent walk.Container) (Page, error) {
 	page := NewComposite{
-		FontSize:        FontSizeTen,
-		WindowConf:      WindowConfStandard,
-		AutoKeys:        false,
-		Keys:            []Key{{Label:CurrentGamma , Visible: true, Const: true}},
-		VariabilityVisible: false,
+		FontSize:   FontSizeTen,
+		WindowConf: WindowConfStandard,
+		Keys:       []Key{{Label: EnterKey, Visible: true, Enable: true}},
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
-				Cipher: ciphers.A51Encrypt,
+				Cipher:     ciphers.A51Encrypt,
 				TextErrors: TextErrors,
-				KeyErrorsHandler: A51KeyHandler,
+				KeyErrors:  []Errors{{
+					Regex: RegexKeyA51,
+					ErrorsList: KeyErrors.ErrorsList}},
 			},
 			Decrypt: CiphersErrors{
-				Cipher: ciphers.A51Decrypt,
-				TextErrors: CipherTextErrors,
-				KeyErrorsHandler:A51KeyHandler,
-			},
-		},
+				Cipher:           ciphers.A51Decrypt,
+				TextErrors:       Errors{
+					Regex:      RegexTextA51Cipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors:  []Errors{{
+					Regex: RegexKeyA51,
+					ErrorsList: KeyErrors.ErrorsList}},
+			}},
 		},
 	}
 	page.WindowConf.InDeEnable = false
@@ -687,25 +702,115 @@ func NewA51Page(parent walk.Container) (Page, error) {
 
 func MagmaPage(parent walk.Container) (Page, error) {
 	page := NewComposite{
-		FontSize:        FontSizeTen,
-		WindowConf:      WindowConfStandard,
-		AutoKeys:        false,
-		Keys:            []Key{{Label: EnterKey , Visible: true, Enable: true}},
-		VariabilityVisible: false,
+		FontSize:           FontSizeTen,
+		WindowConf:         WindowConfStandard,
+		VariabilityText:    "Другое представление текста",
+		Keys:               []Key{{Label: EnterKey, Visible: true, Enable: true}},
+		VariabilityVisible: true,
 		Ciphers: []EnDecrypt{{
 			Encrypt: CiphersErrors{
-				Cipher: ciphers.MagmaEncrypt,
+				Cipher:     ciphers.MagmaEncryptStart,
 				TextErrors: TextErrors,
 				KeyErrors: []Errors{{
-					Regex:     RegexKeyMagma,
+					Regex:      RegexKeyMagma,
+					ErrorsList: KeyErrors.ErrorsList,
+				}},
+			},
+			Decrypt: CiphersErrors{
+				Cipher: ciphers.MagmaDecryptStart,
+				TextErrors: Errors{
+					Regex:      RegexTextMagmaCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyMagma,
+					ErrorsList: CipherKeyErrors.ErrorsList,
+				}},
+			},
+		}, {
+			Encrypt: CiphersErrors{
+				Cipher: ciphers.MagmaEncrypt,
+				TextErrors: Errors{
+					Regex:      RegexTextMagmaCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyMagma,
 					ErrorsList: KeyErrors.ErrorsList,
 				}},
 			},
 			Decrypt: CiphersErrors{
 				Cipher: ciphers.MagmaDecrypt,
-				TextErrors: CipherTextErrors,
+				TextErrors: Errors{
+					Regex:      RegexTextMagmaCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
 				KeyErrors: []Errors{{
-					Regex:     RegexKeyMagma,
+					Regex:      RegexKeyMagma,
+					ErrorsList: CipherKeyErrors.ErrorsList,
+				}},
+			},
+		},
+		},
+	}
+	page.WindowConf.InDeEnable = false
+	p := new(NewPage)
+	if err := (GenerateComposite(p, page)).Create(NewBuilder(parent)); err != nil {
+		return nil, err
+	}
+	if err := walk.InitWrapperWindow(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func KuzPage(parent walk.Container) (Page, error) {
+	page := NewComposite{
+		FontSize:           FontSizeTen,
+		WindowConf:         WindowConfStandard,
+		VariabilityText:    "Другое представление текста",
+		Keys:               []Key{{Label: EnterKey, Visible: true, Enable: true}},
+		VariabilityVisible: true,
+		Ciphers: []EnDecrypt{{
+			Encrypt: CiphersErrors{
+				Cipher:     ciphers.KuzEncryptStart,
+				TextErrors: TextErrors,
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyKuz,
+					ErrorsList: KeyErrors.ErrorsList,
+				}},
+			},
+			Decrypt: CiphersErrors{
+				Cipher: ciphers.KuzDecryptStart,
+				TextErrors: Errors{
+					Regex:      RegexTextKuzCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyKuz,
+					ErrorsList: CipherKeyErrors.ErrorsList,
+				}},
+			},
+		}, {
+			Encrypt: CiphersErrors{
+				Cipher: ciphers.KuzEncrypt,
+				TextErrors: Errors{
+					Regex:      RegexTextKuzCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyKuz,
+					ErrorsList: KeyErrors.ErrorsList,
+				}},
+			},
+			Decrypt: CiphersErrors{
+				Cipher: ciphers.KuzDecrypt,
+				TextErrors: Errors{
+					Regex:      RegexTextKuzCipher,
+					ErrorsList: CipherTextErrors.ErrorsList,
+				},
+				KeyErrors: []Errors{{
+					Regex:      RegexKeyKuz,
 					ErrorsList: CipherKeyErrors.ErrorsList,
 				}},
 			},

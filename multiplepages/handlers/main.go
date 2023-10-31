@@ -64,12 +64,12 @@ func MatrixCipherKeyHandler(cipher CipherPackage)  string {
 	}
 
 	inMatrix := InverseMatrix(matrix)
-	matr := [][]float64{}
+	matr := [][]int{}
 	i := 0
 	text := cipher.Text
 	for _, v := range strings.Split(text, " ") {
-		t, _ := strconv.ParseFloat(v, 64)
-		matr = append(matr, []float64{t})
+		t, _ := strconv.Atoi(v)
+		matr = append(matr, []int{t})
 		i++
 		if i > len(inMatrix[0])-1 {
 			i = 0
@@ -81,7 +81,7 @@ func MatrixCipherKeyHandler(cipher CipherPackage)  string {
 					return ErrorTextMatrixExtraSym
 				}
 			}
-			matr = [][]float64{}
+			matr = [][]int{}
 		}
 	}
 	return ""
@@ -470,12 +470,15 @@ func RsaSignatureKeyHandler(cipher CipherPackage)  string {
 	}
 	p, _ := strconv.Atoi(keys[0].Text())
 	q, _ := strconv.Atoi(keys[1].Text())
-
+	e := keys[2].Text()
 	if !IsPrime(p){
 		return ErrorParameterPNotPrime
 	}
 	if !IsPrime(q){
 		return ErrorParameterQNotPrime
+	}
+	if len(e)==0{
+		return ErrorParameterWrite+" 3"
 	}
 	return ""
 }
@@ -505,12 +508,19 @@ func RsaKeyHandler(cipher CipherPackage)  string {
 	}
 	p, _ := strconv.Atoi(keys[0].Text())
 	q, _ := strconv.Atoi(keys[1].Text())
-
+	d, _ := strconv.Atoi(keys[2].Text())
+	e := keys[2].Text()
 	if !IsPrime(p){
 		return ErrorParameterPNotPrime
 	}
 	if !IsPrime(q){
 		return ErrorParameterQNotPrime
+	}
+	if !IsPrime(d){
+		return ErrorParameterDNotPrime
+	}
+	if len(e)==0{
+		return ErrorParameterWrite+" 3"
 	}
 	return ""
 }
@@ -520,6 +530,46 @@ func RsaSignatureStartKeyHandler(cipher CipherPackage)  string {
 }
 
 func ShennonKeyHandler(cipher CipherPackage)  string {
+		keys := cipher.Keys
+		a := keys[1].Text()
+		if len(a)==0{
+			return ErrorParameterWrite+" 2"
+		}
+		aNum, _:= strconv.Atoi(a)
+		if aNum%2==0{
+			return ErrorAShennonKey
+		}
+		t0 := keys[2].Text()
+		if len(t0)==0{
+			return ErrorParameterWrite+" 3"
+		}
+		m := keys[4].Text()
+		if len(m)==0{
+			return ErrorParameterWrite+" 5"
+		}
+		mNum,_ := strconv.Atoi(m)
+		var pMas []float64 //инициализируем массив с будущими значениями C
+		var i int
+		for i = 2; i <= mNum; i++ { //перебираем все числа от 2 до m включительно
+		if !IsPrime(i){ //если число не простое, то переходим к началу цикла,проверяя следующее число
+			continue
+		}
+		if math.Mod(float64(mNum), float64(i)) == 0 { //если число просто и остаток деления m на это число 0, то
+			pMas = append(pMas, float64(i)) //добавляем число в массив со значениями p - простых делителей m
+		}
+		c := keys[3].Text()
+		if len(c)==0{
+			return ErrorParameterWrite+" 4"
+		}
+		cNum,_ := strconv.Atoi(c)
+		if !AreCoprime(float64(cNum),float64(mNum)){
+			return ErrorCShennonKey
+		}
+	}
+	return ""
+}
+
+func ShennonStartKeyHandler(cipher CipherPackage) string {
 	return ""
 }
 

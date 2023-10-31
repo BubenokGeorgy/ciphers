@@ -40,6 +40,8 @@ func main() {
 			{"Блокнот Шеннона", "key.png", NewShennonPage},
 			{"A5/1", "key.png", NewA51Page},
 			{"Магма", "key.png", MagmaPage},
+			{"Кузнечик", "key.png", KuzPage},
+
 		},
 	}
 
